@@ -15,7 +15,11 @@ jobs:
       # yüklemek gerekmesin. Depoda sadece bu iş akışı dosyası duruyor.
       - name: Kaynağı çek
         run: |
-          curl -fsSL -H "Cache-Control: no-cache" -o ios-kaynak.zip https://chainmedia.co/fotoyol/ios-kaynak.zip
+          # Tek denemeye bırakmıyoruz: anlık bir kopma bütün derlemeyi çöpe atıyor.
+          curl -fsSL --retry 6 --retry-delay 5 --retry-all-errors \
+            --connect-timeout 20 --max-time 300 \
+            -H "Cache-Control: no-cache" -o ios-kaynak.zip https://chainmedia.co/fotoyol/ios-kaynak.zip \
+            || { echo "Kaynak indirilemedi — sunucu geçici olarak erişilemiyor olabilir."; exit 1; }
           unzip -oq ios-kaynak.zip
           echo "--- bu derlemedeki kaynak ---"
           cat DAMGA.txt
