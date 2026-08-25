@@ -11,7 +11,18 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      # Kaynak depodan DEĞİL, sunucudan geliyor. Böylece her değişiklikte
+      # GitHub'a dosya yüklemek gerekmiyor: kaynak güncellenir, burada
+      # "Re-run all jobs" denir, o kadar.
+      # ⚠️ Windows işinde kabuk PowerShell: `unzip` YOK, `Expand-Archive` var.
+      # `curl` de PowerShell'de takma ad olduğu için `curl.exe` yazıyoruz.
+      - name: Kaynağı çek
+        run: |
+          curl.exe -fsSL -H "Cache-Control: no-cache" -o kaynak.zip https://chainmedia.co/fotoyol/kaynak.zip
+          Expand-Archive -Path kaynak.zip -DestinationPath . -Force
+          Write-Host "--- bu derlemedeki kaynak ---"
+          Get-Content DAMGA.txt
+          Get-ChildItem -Recurse pc, motor | Select-Object -ExpandProperty FullName
 
       - uses: actions/setup-python@v5
         with:
@@ -26,33 +37,52 @@ jobs:
             parameter_decorators pygments pygnuutils questionary requests tqdm traitlets `
             xonsh pywin32
           pip install --no-deps "pymobiledevice3==10.11.2"
+          # Kendi penceremiz. Windows'ta WebView2 kullanıyor (Edge ile birlikte
+          # zaten kurulu geliyor) ve pythonnet'i beraberinde çekiyor.
+          pip install pywebview
 
       - name: Paketle
         run: |
           pyinstaller --noconfirm --onefile --noconsole `
-            --name fotoaktar `
+            --name fotoyol `
             --icon pc/simge.ico `
             --add-data "pc/arayuz;arayuz" `
+            --add-data "pc/simge.ico;." `
             --paths motor `
             --hidden-import motor `
             --hidden-import telefon `
             --hidden-import klasor `
             --collect-submodules pymobiledevice3 `
+            --hidden-import webview.platforms.winforms `
+            --collect-all clr_loader `
             pc/uygulama.py
 
       - name: Boyutu göster
         run: |
           Get-ChildItem dist | Format-Table Name, @{n="MB";e={[math]::Round($_.Length/1MB,1)}}
 
+      - name: Paket eksiksiz mi (teşhis)
+        # ÖNEMLİ: aşağıdaki açılış testi pencere kütüphanesi eksik olsa BİLE
+        # geçer, çünkü uygulama o durumda sessizce tarayıcıya düşüyor. Bu adım
+        # tam olarak onu yakalıyor.
+        run: |
+          # --noconsole ile derlenen .exe pencere uygulaması sayılıyor; PowerShell
+          # onu BEKLEMEZ ve $LASTEXITCODE bir önceki komuttan kalır. Bu yüzden
+          # Start-Process -Wait ile bekleyip çıkış kodunu nesneden okuyoruz.
+          $p = Start-Process -FilePath "dist\fotoyol.exe" -ArgumentList "--tani" -Wait -PassThru
+          if (Test-Path "dist\fotoyol-tani.json") { Get-Content "dist\fotoyol-tani.json" }
+          else { Write-Host "tani.json hic yazilmadi - uygulama acilmadan coktu" }
+          if ($p.ExitCode -ne 0) { Write-Host "PAKETTE EKSIK VAR"; exit 1 }
+
       - name: Açılıyor mu (duman testi)
         # Uygulama sunucu açıp beklediği için --acma ile tarayıcısız başlatıp
         # birkaç saniye ayakta kalabildiğini görüyoruz. Anında çökerse yakalarız.
         run: |
-          $p = Start-Process -FilePath "dist\fotoaktar.exe" -ArgumentList "--acma" -PassThru
+          $p = Start-Process -FilePath "dist\fotoyol.exe" -ArgumentList "--acma" -PassThru
           Start-Sleep -Seconds 12
           if ($p.HasExited) {
             Write-Host "UYGULAMA ANINDA KAPANDI - cikis kodu: $($p.ExitCode)"
-            if (Test-Path "dist\fotoaktar-hata.txt") { Get-Content "dist\fotoaktar-hata.txt" }
+            if (Test-Path "dist\fotoyol-hata.txt") { Get-Content "dist\fotoyol-hata.txt" }
             exit 1
           }
           Write-Host "12 saniye ayakta kaldi - acilis tamam"
@@ -60,8 +90,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: fotoaktar-windows
-          path: dist/fotoaktar.exe
+          name: fotoyol-windows
+          path: dist/fotoyol.exe
           retention-days: 30
 
   # ============================================================
@@ -70,7 +100,14 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      # Kaynak depodan DEĞİL, sunucudan geliyor (bkz. Windows işindeki not).
+      - name: Kaynağı çek
+        run: |
+          curl -fsSL -H "Cache-Control: no-cache" -o kaynak.zip https://chainmedia.co/fotoyol/kaynak.zip
+          unzip -oq kaynak.zip
+          echo "--- bu derlemedeki kaynak ---"
+          cat DAMGA.txt
+          ls -R pc motor
 
       - uses: actions/setup-python@v5
         with:
@@ -93,26 +130,36 @@ jobs:
           pip install construct construct-typing cryptography hexdump ifaddr packaging \
             parameter_decorators pygments pygnuutils questionary requests tqdm traitlets xonsh
           pip install --no-deps "pymobiledevice3==10.11.2"
+          pip install pywebview
 
       - name: Paketle
         run: |
           pyinstaller --noconfirm --windowed \
-            --name fotoaktar \
+            --name fotoyol \
             --icon simge.icns \
             --add-data "pc/arayuz:arayuz" \
+            --add-data "pc/simge.ico:." \
             --paths motor \
             --hidden-import motor \
             --hidden-import telefon \
             --hidden-import klasor \
             --collect-submodules pymobiledevice3 \
+            --hidden-import webview.platforms.cocoa \
             pc/uygulama.py
+
+      - name: Paket eksiksiz mi (teşhis)
+        run: |
+          # Rapor .app paketinin içindeki ikilinin yanına yazılıyor.
+          ./dist/fotoyol.app/Contents/MacOS/fotoyol --tani; kod=$?
+          cat dist/fotoyol.app/Contents/MacOS/fotoyol-tani.json 2>/dev/null || true
+          exit $kod
 
       - name: Sıkıştır
         run: |
-          cd dist && zip -qry fotoaktar-macos.zip fotoaktar.app && ls -lh fotoaktar-macos.zip
+          cd dist && zip -qry fotoyol-macos.zip fotoyol.app && ls -lh fotoyol-macos.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: fotoaktar-macos
-          path: dist/fotoaktar-macos.zip
+          name: fotoyol-macos
+          path: dist/fotoyol-macos.zip
           retention-days: 30
