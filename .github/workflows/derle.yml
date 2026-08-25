@@ -1,0 +1,118 @@
+name: Masaüstü uygulamasını paketle
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  # ============================================================
+  # WINDOWS — tek dosyalık .exe
+  # ============================================================
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"     # 3.13+ bazı bağımlılıklarda hazır paket sıkıntısı çıkarıyor
+
+      - name: Bağımlılıklar
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          # Klasör kaynağı için hiçbir şey gerekmiyor; aşağısı TELEFON desteği için.
+          pip install construct construct-typing cryptography hexdump ifaddr packaging `
+            parameter_decorators pygments pygnuutils questionary requests tqdm traitlets `
+            xonsh pywin32
+          pip install --no-deps "pymobiledevice3==10.11.2"
+
+      - name: Paketle
+        run: |
+          pyinstaller --noconfirm --onefile --noconsole `
+            --name fotoaktar `
+            --icon pc/simge.ico `
+            --add-data "pc/arayuz;arayuz" `
+            --paths motor `
+            --hidden-import motor `
+            --hidden-import telefon `
+            --hidden-import klasor `
+            --collect-submodules pymobiledevice3 `
+            pc/uygulama.py
+
+      - name: Boyutu göster
+        run: |
+          Get-ChildItem dist | Format-Table Name, @{n="MB";e={[math]::Round($_.Length/1MB,1)}}
+
+      - name: Açılıyor mu (duman testi)
+        # Uygulama sunucu açıp beklediği için --acma ile tarayıcısız başlatıp
+        # birkaç saniye ayakta kalabildiğini görüyoruz. Anında çökerse yakalarız.
+        run: |
+          $p = Start-Process -FilePath "dist\fotoaktar.exe" -ArgumentList "--acma" -PassThru
+          Start-Sleep -Seconds 12
+          if ($p.HasExited) {
+            Write-Host "UYGULAMA ANINDA KAPANDI - cikis kodu: $($p.ExitCode)"
+            if (Test-Path "dist\fotoaktar-hata.txt") { Get-Content "dist\fotoaktar-hata.txt" }
+            exit 1
+          }
+          Write-Host "12 saniye ayakta kaldi - acilis tamam"
+          Stop-Process -Id $p.Id -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fotoaktar-windows
+          path: dist/fotoaktar.exe
+          retention-days: 30
+
+  # ============================================================
+  # macOS — .app paketi
+  # ============================================================
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Simgeyi .icns'e çevir
+        run: |
+          mkdir -p simge.iconset
+          for b in 16 32 64 128 256 512; do
+            sips -z $b $b pc/simge.png --out simge.iconset/icon_${b}x${b}.png >/dev/null
+          done
+          cp simge.iconset/icon_512x512.png simge.iconset/icon_512x512@2x.png
+          iconutil -c icns simge.iconset -o simge.icns
+          ls -la simge.icns
+
+      - name: Bağımlılıklar
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller
+          pip install construct construct-typing cryptography hexdump ifaddr packaging \
+            parameter_decorators pygments pygnuutils questionary requests tqdm traitlets xonsh
+          pip install --no-deps "pymobiledevice3==10.11.2"
+
+      - name: Paketle
+        run: |
+          pyinstaller --noconfirm --windowed \
+            --name fotoaktar \
+            --icon simge.icns \
+            --add-data "pc/arayuz:arayuz" \
+            --paths motor \
+            --hidden-import motor \
+            --hidden-import telefon \
+            --hidden-import klasor \
+            --collect-submodules pymobiledevice3 \
+            pc/uygulama.py
+
+      - name: Sıkıştır
+        run: |
+          cd dist && zip -qry fotoaktar-macos.zip fotoaktar.app && ls -lh fotoaktar-macos.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fotoaktar-macos
+          path: dist/fotoaktar-macos.zip
+          retention-days: 30
