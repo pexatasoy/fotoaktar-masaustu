@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>fotoaktar</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%2316294A%22/%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23FAF6EF%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M16%206v12m0%200%205-5m-5%205-5-5%22/%3E%3Cpath%20d%3D%22M7%2022v3a1.5%201.5%200%200%200%201.5%201.5h15A1.5%201.5%200%200%200%2025%2025v-3%22/%3E%3C/g%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --krem:#FAF6EF; --krem-2:#F3EDE2; --beyaz:#FFFFFF;
+  --lacivert:#16294A; --lacivert-2:#2A4470; --lacivert-soluk:#EDF0F6;
+  --yesil:#1E4635; --yesil-soluk:#E7F0EA;
+  --altin:#C8912F; --altin-soluk:#FAF0DC;
+  --basari:#2E7D53; --uyari:#B07A1C; --hata:#B3382F; --hata-soluk:#F9E7E6;
+  --gri:#6B7688; --gri-2:#95A0B0; --hat:#E6E0D4; --hat-2:#F0EAE0;
+  --r:18px; --r-k:14px;
+  --f:"Manrope","Segoe UI",-apple-system,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--krem);color:var(--lacivert);font-family:var(--f);
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;overflow:hidden}
+h1,h2,h3{margin:0;text-wrap:balance}
+p{margin:0}
+button{font-family:inherit;font-size:inherit;color:inherit;border:none;background:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--altin);outline-offset:2px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+
+.ikon{width:24px;height:24px;flex:none;stroke:currentColor;fill:none;
+  stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ikon.k{width:18px;height:18px}
+.ikon.b{width:21px;height:21px}
+
+.govde{flex:1;overflow-y:auto;display:flex;justify-content:center;padding:26px 20px 8px}
+.kolon{width:100%;max-width:560px;display:flex;flex-direction:column;gap:16px}
+.ekran{display:none;flex-direction:column;gap:16px;animation:gir .26s ease both}
+.ekran.acik{display:flex}
+@keyframes gir{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.kahraman{align-self:center;width:96px;height:96px;border-radius:28px;display:grid;
+  place-items:center;flex:none;background:var(--lacivert-soluk);color:var(--lacivert-2);
+  border:1px solid rgba(22,41,74,.12)}
+.kahraman .ikon{width:42px;height:42px;stroke-width:1.6}
+.kahraman.yesil{background:var(--yesil-soluk);color:var(--basari);border-color:rgba(46,125,83,.24)}
+.kahraman.altin{background:var(--altin-soluk);color:var(--uyari);border-color:rgba(176,122,28,.24)}
+.kahraman.kirmizi{background:var(--hata-soluk);color:var(--hata);border-color:rgba(179,56,47,.24)}
+
+.baslik{font-size:25px;font-weight:800;letter-spacing:-.028em;line-height:1.16;text-align:center}
+.baslik.sol{text-align:left;font-size:21px}
+.altmetin{font-size:15px;color:var(--gri);line-height:1.5;text-align:center;text-wrap:pretty}
+.altmetin.sol{text-align:left}
+.orta{flex:1;display:flex;flex-direction:column;justify-content:center;gap:18px;min-height:330px}
+
+.kart{background:var(--beyaz);border:1px solid var(--hat-2);border-radius:var(--r);
+  padding:15px 17px;box-shadow:0 1px 2px rgba(22,41,74,.04)}
+.satir{display:flex;align-items:center;gap:13px;width:100%;text-align:left}
+.satir .kutu{width:42px;height:42px;border-radius:12px;flex:none;display:grid;place-items:center;
+  background:var(--lacivert-soluk);color:var(--lacivert-2)}
+.satir .yazi{flex:1;min-width:0}
+.satir .yazi b{display:block;font-size:15.5px;font-weight:700;letter-spacing:-.01em}
+.satir .yazi span{font-size:13px;color:var(--gri);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;display:block}
+.satir .son{font-size:13.5px;font-weight:700;color:var(--gri);font-variant-numeric:tabular-nums;flex:none}
+button.kart{transition:border-color .16s}
+button.kart:hover{border-color:var(--gri-2)}
+
+.ikili{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.olcu{background:var(--beyaz);border:1px solid var(--hat-2);border-radius:var(--r-k);padding:13px 15px}
+.olcu b{display:block;font-size:21px;font-weight:800;letter-spacing:-.028em;
+  font-variant-numeric:tabular-nums;line-height:1.15}
+.olcu span{font-size:12.5px;color:var(--gri);font-weight:500}
+
+.serit{display:flex;gap:10px;align-items:flex-start;border-radius:var(--r-k);padding:12px 14px;
+  font-size:13.5px;line-height:1.45;font-weight:500;border:1px solid}
+.serit.yesil{background:var(--yesil-soluk);border-color:rgba(30,70,53,.2);color:var(--yesil)}
+.serit.altin{background:var(--altin-soluk);border-color:rgba(176,122,28,.28);color:var(--uyari)}
+.serit.kirmizi{background:var(--hata-soluk);border-color:rgba(179,56,47,.28);color:var(--hata)}
+.serit .ikon{width:17px;height:17px;margin-top:1px}
+
+.asama{display:flex;align-items:center;gap:12px;background:var(--beyaz);border:1px solid var(--hat-2);
+  border-radius:var(--r-k);padding:12px 15px;transition:border-color .3s,background .3s}
+.asama.calisiyor{border-color:rgba(200,145,47,.55);background:var(--altin-soluk)}
+.asama.bitti{border-color:rgba(46,125,83,.32);background:var(--yesil-soluk)}
+.asama .yuv{width:28px;height:28px;border-radius:50%;flex:none;display:grid;place-items:center;
+  border:2px solid var(--hat);color:var(--gri-2)}
+.asama.calisiyor .yuv{border-color:var(--altin);color:var(--altin)}
+.asama.bitti .yuv{border-color:var(--basari);background:var(--basari);color:#fff}
+.asama .yuv .ikon{width:13px;height:13px;stroke-width:2.7}
+.asama .yazi{flex:1;min-width:0}
+.asama .yazi b{display:block;font-size:14.5px;font-weight:700}
+.asama .yazi span{font-size:12.5px;color:var(--gri);font-variant-numeric:tabular-nums}
+
+.sayac{text-align:center;font-size:32px;font-weight:800;letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;line-height:1}
+.sayac em{font-style:normal;color:var(--gri-2)}
+.cubuk{height:8px;border-radius:999px;background:var(--krem-2);border:1px solid var(--hat-2);overflow:hidden}
+.cubuk i{display:block;height:100%;width:0;background:var(--lacivert);border-radius:999px;transition:width .4s linear}
+.suanki{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--gri-2);
+  text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.yer-kart{background:var(--lacivert);color:var(--krem);border-radius:var(--r);padding:15px 17px;
+  display:flex;align-items:center;justify-content:space-between;gap:14px}
+.yer-kart b{font-size:20px;font-weight:800;letter-spacing:-.025em;font-variant-numeric:tabular-nums;display:block}
+.yer-kart span{font-size:13px;opacity:.72;font-weight:500}
+
+.depo{display:flex;height:11px;border-radius:999px;overflow:hidden;background:var(--krem-2);border:1px solid var(--hat-2)}
+.depo i{display:block;height:100%}
+.efsane{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--gri);font-weight:500}
+.efsane span{display:flex;align-items:center;gap:6px}
+.efsane u{width:9px;height:9px;border-radius:3px;text-decoration:none}
+
+.detay-dugme{align-self:center;display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;
+  color:var(--gri);padding:6px 12px;border:1px solid var(--hat);border-radius:999px;background:var(--beyaz)}
+.detay-dugme:hover{border-color:var(--gri-2);color:var(--lacivert)}
+.detay-dugme .ikon{width:12px;height:12px;stroke-width:2.5;transition:transform .2s}
+.detay-dugme.acik .ikon{transform:rotate(180deg)}
+.detay{display:none;flex-direction:column;gap:10px}
+.detay.acik{display:flex}
+.d-bas{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--gri-2)}
+.d-sat{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--hat-2);font-size:13px}
+.d-sat:last-child{border-bottom:none}
+.d-sat span{color:var(--gri);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.d-sat b{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+
+.grup{display:flex;flex-direction:column;gap:8px}
+.grup-ad{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--gri-2)}
+.sec{display:flex;align-items:center;gap:12px;padding:12px 15px;background:var(--beyaz);
+  border:1px solid var(--hat-2);border-radius:var(--r-k);cursor:pointer;transition:border-color .16s}
+.sec:hover{border-color:var(--gri-2)}
+.sec.secili{border-color:var(--lacivert);background:var(--lacivert-soluk)}
+.tik{width:17px;height:17px;border-radius:50%;border:1.5px solid var(--hat);flex:none;display:grid;place-items:center}
+.sec.secili .tik{border-color:var(--lacivert)}
+.sec.secili .tik::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--lacivert)}
+.sec b{font-size:14.5px;font-weight:600;flex:1}
+
+.plan{background:var(--beyaz);border:1.5px solid var(--altin);border-radius:var(--r);padding:17px;
+  display:flex;flex-direction:column;gap:11px}
+.plan .et{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--uyari);background:var(--altin-soluk);padding:4px 9px;border-radius:999px;align-self:flex-start}
+.plan .fiyat{font-size:25px;font-weight:800;letter-spacing:-.03em}
+.plan .fiyat small{font-size:13px;font-weight:600;color:var(--gri)}
+.plan ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.plan li{display:flex;gap:9px;font-size:13.5px;color:var(--gri);align-items:flex-start}
+.plan li .ikon{width:15px;height:15px;color:var(--basari);margin-top:2px;stroke-width:2.5}
+
+.dip{flex:none;display:flex;justify-content:center;padding:8px 20px}
+.dip-ic{width:100%;max-width:560px;display:flex;flex-direction:column;gap:8px}
+.cta{width:100%;padding:14px;border-radius:14px;font-size:15.5px;font-weight:700;letter-spacing:-.01em;
+  display:flex;align-items:center;justify-content:center;gap:9px;transition:opacity .16s,border-color .16s}
+.cta.ana{background:var(--lacivert);color:var(--krem)}
+.cta.altin{background:var(--altin);color:#2A1E06}
+.cta.ana:hover,.cta.altin:hover{opacity:.9}
+.cta.sessiz{background:transparent;color:var(--gri);border:1.5px solid var(--hat)}
+.cta.sessiz:hover{border-color:var(--gri-2);color:var(--lacivert)}
+.cta[disabled]{opacity:.45;cursor:not-allowed}
+.cta .ikon{width:18px;height:18px}
+
+.sekmeler{flex:none;display:flex;justify-content:center;border-top:1px solid var(--hat);background:var(--beyaz);padding:6px}
+.sekmeler-ic{display:flex;width:100%;max-width:560px}
+.sekme{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 4px;
+  border-radius:11px;color:var(--gri-2);transition:color .16s,background .16s}
+.sekme:hover{color:var(--gri)}
+.sekme.aktif{color:var(--lacivert);background:var(--lacivert-soluk)}
+.sekme span{font-size:10.5px;font-weight:700}
+.sekme .ikon{width:20px;height:20px}
+.sekme.aktif .ikon{stroke-width:2.15}
+
+.donen{width:15px;height:15px;border:2px solid rgba(250,246,239,.35);border-top-color:var(--krem);
+  border-radius:50%;animation:don .7s linear infinite}
+@keyframes don{to{transform:rotate(360deg)}}
+.bos{color:var(--gri-2);font-size:14px;text-align:center;padding:34px 0}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <g id="i-disk"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6 12h.01"/><path d="M10 10h8"/><path d="M10 14h5"/></g>
+  <g id="i-telefon"><rect x="5.5" y="2" width="13" height="20" rx="3"/><path d="M10.5 5h3"/></g>
+  <g id="i-klasor"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5h3.2l2 2.5h7.8A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5Z"/></g>
+  <g id="i-aktar"><path d="M12 3v11m0 0 4.5-4.5M12 14l-4.5-4.5"/><path d="M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/></g>
+  <g id="i-kalkan"><path d="M12 21.5s7.5-3.6 7.5-9.3V5.4L12 2.5 4.5 5.4v6.8c0 5.7 7.5 9.3 7.5 9.3Z"/><path d="m9 12 2.2 2.2L15.5 10"/></g>
+  <g id="i-tik"><path d="m5 12.5 4.5 4.5L19 7"/></g>
+  <g id="i-yukari"><path d="M12 20V5m0 0-5.5 5.5M12 5l5.5 5.5"/></g>
+  <g id="i-uyari"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.2h.01"/></g>
+  <g id="i-asagi"><path d="m6 9.5 6 6 6-6"/></g>
+  <g id="i-ileri"><path d="m9.5 6 6 6-6 6"/></g>
+  <g id="i-video"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.2v9.4l-6-3.2z"/></g>
+  <g id="i-cift"><rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 5.5h-9a2.5 2.5 0 0 0-2.5 2.5v9"/></g>
+  <g id="i-ekran"><rect x="4.5" y="2.5" width="15" height="19" rx="3"/><path d="M10 5.5h4"/></g>
+  <g id="i-depo"><circle cx="12" cy="12" r="8.5"/><path d="M12 12V3.5A8.5 8.5 0 0 1 19.4 16.2L12 12Z" fill="currentColor" stroke="none" opacity=".92"/></g>
+  <g id="i-kisi"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></g>
+  <g id="i-yildiz"><path d="m12 3.5 2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.9l6-.8L12 3.5Z"/></g>
+  <g id="i-bulut"><path d="M17.5 18.5H7a4.5 4.5 0 0 1-.4-9 6 6 0 0 1 11.5 1.6 3.9 3.9 0 0 1-.6 7.4Z"/></g>
+</defs></svg>
+
+<div class="govde"><div class="kolon" id="kolon">
+
+  <!-- ============ SEKME 1 · AKTAR ============ -->
+  <section class="ekran acik" data-e="a">
+    <div id="aktarIcerik"></div>
+  </section>
+
+  <!-- ============ SEKME 2 · YER AÇ ============ -->
+  <section class="ekran" data-e="b">
+    <div id="yerIcerik"></div>
+  </section>
+
+  <!-- ============ SEKME 3 · HESAP ============ -->
+  <section class="ekran" data-e="c">
+    <h2 class="baslik sol">Hesabın</h2>
+    <div class="kart satir">
+      <div class="kutu"><svg class="ikon b" viewBox="0 0 24 24"><use href="#i-kisi"/></svg></div>
+      <div class="yazi"><b>Ücretsiz sürüm</b><span>Seferde 500 fotoğrafa kadar</span></div>
+    </div>
+    <div class="plan">
+      <span class="et">Tek seferlik</span>
+      <div class="fiyat">— <small>fiyat henüz belirlenmedi</small></div>
+      <ul>
+        <li><svg class="ikon" viewBox="0 0 24 24"><use href="#i-tik"/></svg><span>Sınırsız fotoğraf ve video</span></li>
+        <li><svg class="ikon" viewBox="0 0 24 24"><use href="#i-tik"/></svg><span>Ömür boyu, abonelik yok</span></li>
+        <li><svg class="ikon" viewBox="0 0 24 24"><use href="#i-tik"/></svg><span>Fotoğrafların bize hiç gelmiyor</span></li>
+      </ul>
+    </div>
+    <div class="grup">
+      <div class="grup-ad">Klasör düzeni</div>
+      <div class="sec" data-duzen="tarih"><div class="tik"></div><b>Tarihe göre</b></div>
+      <div class="sec" data-duzen="kaynak"><div class="tik"></div><b>Kaynağa göre</b></div>
+      <div class="sec" data-duzen="duz"><div class="tik"></div><b>Tek klasör</b></div>
+    </div>
+    <div class="grup">
+      <div class="grup-ad">Ekran görüntüleri</div>
+      <div class="sec" data-ekran="1"><div class="tik"></div><b>Ayrı klasörde</b></div>
+      <div class="sec" data-ekran="0"><div class="tik"></div><b>Diğerleriyle birlikte</b></div>
+    </div>
+  </section>
+
+</div></div>
+
+<div class="dip"><div class="dip-ic" id="dip"></div></div>
+
+<nav class="sekmeler"><div class="sekmeler-ic">
+  <button class="sekme aktif" data-sekme="a">
+    <svg class="ikon" viewBox="0 0 24 24"><use href="#i-aktar"/></svg><span>Aktar</span></button>
+  <button class="sekme" data-sekme="b">
+    <svg class="ikon" viewBox="0 0 24 24"><use href="#i-depo"/></svg><span>Yer aç</span></button>
+  <button class="sekme" data-sekme="c">
+    <svg class="ikon" viewBox="0 0 24 24"><use href="#i-kisi"/></svg><span>Hesap</span></button>
+</div></nav>
+
+<script>
+"use strict";
+const JETON = "__JETON__";
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+let D = null;            // sunucudan gelen durum
+let sekme = "a";
+let ayrinti = false;
+let mesgul = false;
+let anket = null;        // ilerleme yoklaması
+
+const ikon = (k, s="ikon") => `<svg class="${s}" viewBox="0 0 24 24"><use href="#${k}"/></svg>`;
+const kacar = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const sayi = n => (n??0).toLocaleString("tr-TR");
+function bicim(b){ b=b||0; const u=["B","KB","MB","GB","TB"]; let i=0;
+  while(b>=1024&&i<u.length-1){b/=1024;i++} return b.toFixed(1).replace(".",",")+" "+u[i]; }
+
+async function api(yol, govde){
+  const s = await fetch(yol, {
+    method: govde===undefined ? "GET" : "POST",
+    headers: {"X-Jeton": JETON, "Content-Type":"application/json"},
+    body: govde===undefined ? undefined : JSON.stringify(govde||{})
+  });
+  return s.json();
+}
+
+async function durumAl(){ D = await api("/api/durum"); ciz(); }
+
+/* ---------------------------------------------- SEKME 1 */
+function aktarEkrani(){
+  if(!D) return `<div class="bos">Yükleniyor…</div>`;
+  if(D.hata) return kartHata(D.hata);
+
+  if(D.calisiyor || (D.bitti && D.sonuc)) return D.bitti ? bittiEkrani() : ilerlemeEkrani();
+
+  if(!D.kaynak_tipi) return `
+    <div class="orta">
+      <div class="kahraman">${ikon("i-aktar")}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <h2 class="baslik">Fotoğraflarını boşalt</h2>
+        <p class="altmetin">Telefonunu kabloyla bağla, ya da bilgisayarındaki dağınık bir klasörü seç.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <button class="kart satir" onclick="kaynakTelefon()">
+          <div class="kutu">${ikon("i-telefon","ikon b")}</div>
+          <div class="yazi"><b>Bağlı telefonu oku</b><span>iPhone, kabloyla</span></div>
+          ${ikon("i-ileri","ikon k")}
+        </button>
+        <button class="kart satir" onclick="kaynakKlasor()">
+          <div class="kutu">${ikon("i-klasor","ikon b")}</div>
+          <div class="yazi"><b>Klasör seç</b><span>Bilgisayarındaki fotoğraflar</span></div>
+          ${ikon("i-ileri","ikon k")}
+        </button>
+      </div>
+    </div>`;
+
+  const r = D.rapor || {adet:0,bayt:0,bulutta:0};
+  return `
+    <div class="kahraman">${ikon(D.kaynak_tipi==="telefon"?"i-telefon":"i-klasor")}</div>
+    <h2 class="baslik">${kacar(D.kaynak_ad)}</h2>
+    <div class="ikili">
+      <div class="olcu"><b>${sayi(r.adet)}</b><span>fotoğraf ve video</span></div>
+      <div class="olcu"><b>${bicim(r.bayt)}</b><span>toplam</span></div>
+    </div>
+    ${D.hedef ? `
+      <button class="kart satir" onclick="hedefSec()">
+        <div class="kutu">${ikon("i-disk","ikon b")}</div>
+        <div class="yazi"><b>Hedef seçildi</b><span>${kacar(D.hedef)}</span></div>
+        ${ikon("i-ileri","ikon k")}
+      </button>` : `
+      <button class="kart satir" onclick="hedefSec()">
+        <div class="kutu">${ikon("i-disk","ikon b")}</div>
+        <div class="yazi"><b>Nereye yazılsın?</b><span>Diski ya da klasörü seç</span></div>
+        ${ikon("i-ileri","ikon k")}
+      </button>`}
+    ${r.bulutta ? `<div class="serit altin">${ikon("i-bulut")}
+      <span><b>${sayi(r.bulutta)} fotoğrafın aslı telefonda değil.</b> Bunlar aktarılamaz ve
+      silinebilir sayılmaz — telefonda kalırlar.</span></div>` : ""}
+    <div class="serit yesil">${ikon("i-kalkan")}
+      <span>Fotoğraflar kontrol edilmeden hiçbir şey silinmez.</span></div>
+    ${ayrintiBloku(r)}`;
+}
+
+function ayrintiBloku(r){
+  const kaynaklar = Object.entries(r.kaynaklar||{}).slice(0,6)
+    .map(([k,v])=>`<div class="d-sat"><span>${kacar(k)}</span><b>${sayi(v.adet)} · ${bicim(v.bayt)}</b></div>`).join("");
+  const yillar = Object.entries(r.yillar||{})
+    .map(([k,v])=>`<div class="d-sat"><span>${kacar(k)}</span><b>${sayi(v.adet)} · ${bicim(v.bayt)}</b></div>`).join("");
+  return `
+    <button class="detay-dugme ${ayrinti?"acik":""}" onclick="ayrintiDegis()">
+      ${ayrinti?"Ayrıntıları gizle":"Ayrıntıları göster"} ${ikon("i-asagi")}</button>
+    <div class="detay ${ayrinti?"acik":""}">
+      <div><div class="d-bas">Nereden geldi</div>${kaynaklar||'<div class="d-sat"><span>—</span></div>'}</div>
+      <div><div class="d-bas">Türlere göre</div>
+        <div class="d-sat"><span>Video</span><b>${sayi(r.video?.adet)} · ${bicim(r.video?.bayt)}</b></div>
+        <div class="d-sat"><span>Ekran görüntüsü</span><b>${sayi(r.ekran_goruntusu?.adet)} · ${bicim(r.ekran_goruntusu?.bayt)}</b></div>
+        <div class="d-sat"><span>Aslı bulutta</span><b>${sayi(r.bulutta)}</b></div>
+      </div>
+      <div><div class="d-bas">Yıllara göre</div>${yillar||'<div class="d-sat"><span>—</span></div>'}</div>
+    </div>`;
+}
+
+function ilerlemeEkrani(){
+  const i = D.ilerleme||{}, t = i.toplam||1;
+  const y = i.yazilan + (i.atlanan||0), d = i.dogrulanan||0;
+  return `
+    <div class="kahraman">${ikon("i-aktar")}</div>
+    <h2 class="baslik">Fotoğrafların aktarılıyor</h2>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="sayac">${sayi(y)} <em>/ ${sayi(t)}</em></div>
+      <div class="cubuk"><i style="width:${Math.round(y/t*100)}%"></i></div>
+      <div class="suanki">${kacar(i.son_ad||"")}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div class="asama ${y>=t?"bitti":"calisiyor"}">
+        <div class="yuv">${ikon("i-yukari")}</div>
+        <div class="yazi"><b>Aktarılıyor</b><span>${sayi(i.yazilan)} dosya · ${bicim(i.bayt)}</span></div>
+      </div>
+      <div class="asama ${d>0?(d>=i.yazilan&&y>=t?"bitti":"calisiyor"):""}">
+        <div class="yuv">${ikon("i-tik")}</div>
+        <div class="yazi"><b>Kontrol ediliyor</b><span>${sayi(d)} dosya doğrulandı</span></div>
+      </div>
+    </div>`;
+}
+
+function bittiEkrani(){
+  const s = D.sonuc||{};
+  const sorunlu = (s.basarisiz||0) + (s.bulutta||0);
+  return `
+    <div class="orta">
+      <div class="kahraman ${sorunlu?"altin":"yesil"}">${ikon("i-kalkan")}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <h2 class="baslik">${sayi(s.silinebilir)} dosya güvende.</h2>
+        <p class="altmetin">Hepsi diske yazıldı ve tek tek kontrol edildi.</p>
+      </div>
+      <div class="yer-kart">
+        <div><b>${bicim(s.bayt)}</b><span>diske yazıldı</span></div>
+        ${ikon("i-depo","ikon b")}
+      </div>
+      ${sorunlu ? `<div class="serit altin">${ikon("i-uyari")}<span>
+        ${s.bulutta?`<b>${sayi(s.bulutta)} dosyanın aslı telefonda yoktu.</b> `:""}
+        ${s.basarisiz?`<b>${sayi(s.basarisiz)} dosya kontrolden geçemedi.</b> `:""}
+        Bunlar silinebilir sayılmadı, telefonunda duruyorlar.</span></div>`:""}
+      ${ayrinti?`<div class="detay acik">
+        <div><div class="d-bas">Ayrıntı</div>
+        <div class="d-sat"><span>Yazılan</span><b>${sayi(s.yazilan)}</b></div>
+        <div class="d-sat"><span>Doğrulanan</span><b>${sayi(s.dogrulanan)}</b></div>
+        <div class="d-sat"><span>Çift olduğu için atlanan</span><b>${sayi(s.cift)}</b></div>
+        <div class="d-sat"><span>Zaten diskte olan</span><b>${sayi(s.zaten_var)}</b></div>
+        <div class="d-sat"><span>Aslı bulutta</span><b>${sayi(s.bulutta)}</b></div>
+        <div class="d-sat"><span>Başarısız</span><b>${sayi(s.basarisiz)}</b></div></div></div>`:""}
+      <button class="detay-dugme ${ayrinti?"acik":""}" onclick="ayrintiDegis()">
+        ${ayrinti?"Ayrıntıları gizle":"Ayrıntıları göster"} ${ikon("i-asagi")}</button>
+    </div>`;
+}
+
+function kartHata(m){
+  return `<div class="orta">
+    <div class="kahraman kirmizi">${ikon("i-uyari")}</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <h2 class="baslik">Bir şey ters gitti</h2>
+      <p class="altmetin">${kacar(m)}</p>
+    </div></div>`;
+}
+
+/* ---------------------------------------------- SEKME 2 */
+function yerEkrani(){
+  if(!D || !D.rapor) return `<div class="bos">Önce bir kaynak seç.<br>Aktar sekmesinden telefonunu ya da bir klasörü aç.</div>`;
+  const r = D.rapor;
+  const foto = Math.max(0, r.bayt - r.video.bayt - r.ekran_goruntusu.bayt);
+  const y = n => Math.max(0, r.bayt ? n/r.bayt*100 : 0);
+  const buyuk = (r.en_buyuk_videolar||[]).slice(0,5).map(o=>
+    `<div class="d-sat"><span>${kacar(o.ad)}</span><b>${bicim(o.boyut)}</b></div>`).join("");
+  return `
+    <h2 class="baslik sol">Ne yer kaplıyor</h2>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="depo">
+        <i style="width:${y(r.video.bayt)}%;background:var(--altin)"></i>
+        <i style="width:${y(foto)}%;background:var(--yesil)"></i>
+        <i style="width:${y(r.ekran_goruntusu.bayt)}%;background:var(--lacivert-2)"></i>
+      </div>
+      <div class="efsane">
+        <span><u style="background:var(--altin)"></u>Videolar ${bicim(r.video.bayt)}</span>
+        <span><u style="background:var(--yesil)"></u>Fotoğraflar ${bicim(foto)}</span>
+        <span><u style="background:var(--lacivert-2)"></u>Ekran görüntüleri ${bicim(r.ekran_goruntusu.bayt)}</span>
+      </div>
+      <p class="altmetin sol" style="font-size:13px">${sayi(r.adet)} öğe · ${bicim(r.bayt)}</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div class="kart satir">
+        <div class="kutu">${ikon("i-video","ikon b")}</div>
+        <div class="yazi"><b>${sayi(r.video.adet)} video</b><span>En çok yeri bunlar kaplıyor</span></div>
+        <div class="son">${bicim(r.video.bayt)}</div>
+      </div>
+      <div class="kart satir">
+        <div class="kutu">${ikon("i-ekran","ikon b")}</div>
+        <div class="yazi"><b>${sayi(r.ekran_goruntusu.adet)} ekran görüntüsü</b><span>Büyük kısmı bir daha bakılmadı</span></div>
+        <div class="son">${bicim(r.ekran_goruntusu.bayt)}</div>
+      </div>
+      ${r.bulutta?`<div class="kart satir">
+        <div class="kutu">${ikon("i-bulut","ikon b")}</div>
+        <div class="yazi"><b>${sayi(r.bulutta)} dosyanın aslı bulutta</b><span>Cihazda yer kaplamıyorlar</span></div>
+      </div>`:""}
+    </div>
+    ${buyuk?`<div class="detay acik"><div><div class="d-bas">En büyük videolar</div>${buyuk}</div></div>`:""}`;
+}
+
+/* ---------------------------------------------- düğmeler */
+function dipDugmeleri(){
+  if(sekme!=="a" || !D) return [];
+  if(D.hata) return [{y:"Baştan başla", s:"sessiz", f:"yenidenBasla()"}];
+  if(D.calisiyor) return [{y:"Aktarılıyor…", s:"ana", devre:true}];
+  if(D.bitti) return [{y:"Yeni aktarım", s:"sessiz", f:"yenidenBasla()"}];
+  if(!D.kaynak_tipi) return [];
+  if(!D.hedef) return [{y:"Önce hedefi seç", s:"ana", devre:true}];
+  return [{y:"Aktar", s:"altin", f:"aktar()"}];
+}
+
+/* ---------------------------------------------- eylemler */
+async function kaynakTelefon(){
+  if(mesgul) return; mesgul=true; cizDip("Telefon okunuyor…");
+  try{ const c = await api("/api/kaynak/telefon", {});
+    if(!c.tamam) alert(c.hata||"Telefon okunamadı"); }
+  catch(e){ alert("Telefon okunamadı: "+e); }
+  mesgul=false; await durumAl();
+}
+async function kaynakKlasor(){
+  if(mesgul) return; mesgul=true; cizDip("Klasör seçiliyor…");
+  try{ await api("/api/kaynak/klasor", {}); }catch(e){ alert(e); }
+  mesgul=false; await durumAl();
+}
+async function hedefSec(){
+  if(mesgul) return; mesgul=true;
+  try{ await api("/api/hedef", {}); }catch(e){ alert(e); }
+  mesgul=false; await durumAl();
+}
+async function aktar(){
+  const c = await api("/api/aktar", {});
+  if(!c.tamam){ alert(c.hata||"Başlatılamadı"); return; }
+  await durumAl(); yoklamayiBaslat();
+}
+async function yenidenBasla(){ location.reload(); }
+function ayrintiDegis(){ ayrinti=!ayrinti; ciz(); }
+
+function yoklamayiBaslat(){
+  if(anket) clearInterval(anket);
+  anket = setInterval(async ()=>{
+    const c = await api("/api/ilerleme");
+    if(!D) return;
+    D.calisiyor=c.calisiyor; D.bitti=c.bitti; D.ilerleme=c.ilerleme;
+    D.sonuc=c.sonuc; D.hata=c.hata;
+    ciz();
+    if(!c.calisiyor){ clearInterval(anket); anket=null; await durumAl(); }
+  }, 500);
+}
+
+/* ---------------------------------------------- çizim */
+function cizDip(metin){
+  $("#dip").innerHTML = `<button class="cta ana" disabled>
+    <span class="donen"></span> ${kacar(metin)}</button>`;
+}
+
+function ciz(){
+  $$(".ekran").forEach(e=>e.classList.toggle("acik", e.dataset.e===sekme));
+  $$(".sekme").forEach(b=>b.classList.toggle("aktif", b.dataset.sekme===sekme));
+
+  if(sekme==="a") $("#aktarIcerik").innerHTML = aktarEkrani();
+  if(sekme==="b") $("#yerIcerik").innerHTML = yerEkrani();
+
+  if(D){
+    $$("[data-duzen]").forEach(s=>s.classList.toggle("secili", s.dataset.duzen===D.ayar.duzen));
+    $$("[data-ekran]").forEach(s=>s.classList.toggle("secili",
+      (s.dataset.ekran==="1")===D.ayar.ekran_goruntusu_ayri));
+  }
+
+  const d = dipDugmeleri();
+  $("#dip").innerHTML = d.map(x=>
+    `<button class="cta ${x.s}" ${x.devre?"disabled":""} ${x.f?`onclick="${x.f}"`:""}>
+       ${x.devre&&D&&D.calisiyor?'<span class="donen"></span>':""}${kacar(x.y)}</button>`).join("");
+}
+
+/* ---------------------------------------------- bağlama */
+$$(".sekme").forEach(b=>b.onclick=()=>{ sekme=b.dataset.sekme; ciz(); });
+$$("[data-duzen]").forEach(s=>s.onclick=async()=>{
+  await api("/api/ayar",{duzen:s.dataset.duzen}); await durumAl(); });
+$$("[data-ekran]").forEach(s=>s.onclick=async()=>{
+  await api("/api/ayar",{ekran_goruntusu_ayri:s.dataset.ekran==="1"}); await durumAl(); });
+
+durumAl().then(()=>{ if(D&&D.calisiyor) yoklamayiBaslat(); });
+</script>
+</body>
+</html>
