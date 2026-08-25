@@ -35,7 +35,10 @@ jobs:
       - name: Derle (imzasız — imzalamayı Sideloadly yapacak)
         run: |
           set -o pipefail
-          xcodebuild \
+          # xcodebuild binlerce satır basıyor; hata mesajı içinde kayboluyor.
+          # Günlüğü dosyaya alıp başarısızlıkta SADECE hata satırlarını
+          # yazdırıyoruz — böylece tek bakışta ne olduğu görülüyor.
+          if ! xcodebuild \
             -project fotoyol.xcodeproj \
             -scheme fotoyol \
             -configuration Release \
@@ -45,7 +48,25 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             ONLY_ACTIVE_ARCH=NO \
-            build
+            build > derleme.log 2>&1; then
+              echo ""
+              echo "================== DERLEME HATALARI =================="
+              grep -E "error:" derleme.log | sed "s|$PWD/||" | sort -u | head -60
+              echo "====================================================="
+              echo ""
+              echo "(tam günlük 'derleme-gunlugu' eseri olarak yüklendi)"
+              exit 1
+          fi
+          echo "✅ derleme başarılı"
+
+      - name: Tam günlüğü sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: derleme-gunlugu
+          path: derleme.log
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: .ipa dosyasına paketle
         run: |
