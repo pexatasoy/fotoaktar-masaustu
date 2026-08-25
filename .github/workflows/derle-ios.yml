@@ -1,0 +1,62 @@
+name: iOS uygulamasını derle
+
+on:
+  workflow_dispatch:          # elle çalıştırılıyor — masaüstü derlemesiyle karışmasın
+
+jobs:
+  derle:
+    # GitHub'ın macOS 26 sunucusu — Xcode 26 kurulu geliyor.
+    # Kullanıcının kendi Mac'i (macOS 14.4, Xcode 16.2) iOS 26 telefona uygulama
+    # atamıyor ve yükseltmeye diskte yer yok; o yüzden derleme burada.
+    runs-on: macos-26
+
+    steps:
+      # Kaynak depodan DEĞİL sunucudan geliyor: her değişiklikte GitHub'a dosya
+      # yüklemek gerekmesin. Depoda sadece bu iş akışı dosyası duruyor.
+      - name: Kaynağı çek
+        run: |
+          curl -fsSL -H "Cache-Control: no-cache" -o ios-kaynak.zip https://chainmedia.co/fotoyol/ios-kaynak.zip
+          unzip -oq ios-kaynak.zip
+          echo "--- bu derlemedeki kaynak ---"
+          cat DAMGA.txt
+          ls -R Kaynaklar project.yml
+
+      - name: Ortamı göster
+        run: |
+          sw_vers
+          xcodebuild -version
+
+      - name: XcodeGen kur
+        run: brew install xcodegen
+
+      - name: Xcode projesini üret
+        run: xcodegen generate
+
+      - name: Derle (imzasız — imzalamayı Sideloadly yapacak)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project fotoyol.xcodeproj \
+            -scheme fotoyol \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath yapi \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            build
+
+      - name: .ipa dosyasına paketle
+        run: |
+          mkdir -p Payload
+          cp -R yapi/Build/Products/Release-iphoneos/fotoyol.app Payload/
+          zip -qry fotoyol.ipa Payload
+          ls -lh fotoyol.ipa
+
+      - name: İndirilebilir hale getir
+        uses: actions/upload-artifact@v4
+        with:
+          name: fotoyol-ipa
+          path: fotoyol.ipa
+          retention-days: 30
