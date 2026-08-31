@@ -1,0 +1,87 @@
+name: Işık oyununu derle
+
+on:
+  workflow_dispatch:          # elle çalıştırılıyor
+
+jobs:
+  derle:
+    # GitHub'ın macOS 26 sunucusu — Xcode 26 kurulu geliyor.
+    # Kullanıcının kendi Mac'i (macOS 14.4, Xcode 16.2) iOS 26 telefona uygulama
+    # atamıyor ve yükseltmeye diskte yer yok; o yüzden derleme burada.
+    runs-on: macos-26
+
+    steps:
+      # Kaynak depodan DEĞİL sunucudan geliyor: her değişiklikte GitHub'a dosya
+      # yüklemek gerekmesin. Depoda sadece bu iş akışı dosyası duruyor.
+      - name: Kaynağı çek
+        run: |
+          # Tek denemeye bırakmıyoruz: anlık bir kopma bütün derlemeyi çöpe atıyor.
+          curl -fsSL --retry 6 --retry-delay 5 --retry-all-errors \
+            --connect-timeout 20 --max-time 300 \
+            -H "Cache-Control: no-cache" -o ios-kaynak.zip https://chainmedia.co/fotoyol/isik/isik-kaynak.zip \
+            || { echo "Kaynak indirilemedi — sunucu geçici olarak erişilemiyor olabilir."; exit 1; }
+          unzip -oq ios-kaynak.zip
+          echo "--- bu derlemedeki kaynak ---"
+          cat DAMGA.txt
+          ls -R Kaynaklar project.yml
+
+      - name: Ortamı göster
+        run: |
+          sw_vers
+          xcodebuild -version
+
+      - name: XcodeGen kur
+        run: brew install xcodegen
+
+      - name: Xcode projesini üret
+        run: xcodegen generate
+
+      - name: Derle (imzasız — imzalamayı Sideloadly yapacak)
+        run: |
+          set -o pipefail
+          # xcodebuild binlerce satır basıyor; hata mesajı içinde kayboluyor.
+          # Günlüğü dosyaya alıp başarısızlıkta SADECE hata satırlarını
+          # yazdırıyoruz — böylece tek bakışta ne olduğu görülüyor.
+          if ! xcodebuild \
+            -project isik.xcodeproj \
+            -scheme isik \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath yapi \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            build > derleme.log 2>&1; then
+              echo ""
+              echo "================== DERLEME HATALARI =================="
+              grep -E "error:" derleme.log | sed "s|$PWD/||" | sort -u | head -60
+              echo "====================================================="
+              echo ""
+              echo "(tam günlük 'derleme-gunlugu' eseri olarak yüklendi)"
+              exit 1
+          fi
+          echo "✅ derleme başarılı"
+
+      - name: Tam günlüğü sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: derleme-gunlugu
+          path: derleme.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: .ipa dosyasına paketle
+        run: |
+          mkdir -p Payload
+          cp -R yapi/Build/Products/Release-iphoneos/isik.app Payload/
+          zip -qry isik.ipa Payload
+          ls -lh isik.ipa
+
+      - name: İndirilebilir hale getir
+        uses: actions/upload-artifact@v4
+        with:
+          name: isik-ipa
+          path: isik.ipa
+          retention-days: 30
