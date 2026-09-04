@@ -1,0 +1,155 @@
+name: Işık — TestFlight
+
+# İmzalı derleme ve App Store Connect'e yükleme.
+#
+# ⚠️ Kaynak DEPODAN DEĞİL sunucudan geliyor — öteki akışlarla aynı düzen.
+# Depoda yalnız tarif duruyor.
+#
+# ⚠️ İMZA MALZEMESİ GİZLİ DEĞİŞKENLERDE, depoda değil: sertifika (.p12),
+# parolası, sağlama profili ve App Store Connect API anahtarı. Depo PUBLIC
+# olduğu için bunların hiçbiri dosyaya yazılamaz.
+#
+# ⚠️ Yükleme `altool` ile DEĞİL, App Store Connect API anahtarıyla
+# yapılıyor: kullanıcı adı/parola gerekmiyor, iki adımlı doğrulama sorun
+# çıkarmıyor.
+on:
+  workflow_dispatch:
+    inputs:
+      not:
+        description: "TestFlight'ta görünecek 'Bu sürümde ne var' notu"
+        type: string
+        default: "Yeni derleme"
+
+jobs:
+  yayinla:
+    runs-on: macos-26
+    steps:
+      - name: Kaynağı çek
+        run: |
+          curl -fsSL --retry 6 --retry-delay 5 --retry-all-errors \
+            --connect-timeout 20 --max-time 300 \
+            -H "Cache-Control: no-cache" \
+            -o ios-kaynak.zip https://chainmedia.co/fotoyol/isik/isik-kaynak.zip \
+            || { echo "Kaynak indirilemedi."; exit 1; }
+          unzip -oq ios-kaynak.zip
+          cat DAMGA.txt
+
+      - name: XcodeGen
+        run: brew install xcodegen
+
+      - name: Xcode projesi
+        run: xcodegen generate
+
+      # ⚠️ GEÇİCİ ANAHTAR ZİNCİRİ. Koşucunun varsayılan zincirine yazmak
+      # yerine bu koşuya özel bir zincir kuruluyor; koşu bitince makineyle
+      # birlikte yok oluyor.
+      - name: İmza malzemesini kur
+        env:
+          P12: ${{ secrets.IMZA_P12 }}
+          P12_PAROLA: ${{ secrets.IMZA_P12_PAROLA }}
+          PROFIL: ${{ secrets.IMZA_PROFIL }}
+        run: |
+          ZINCIR=$RUNNER_TEMP/imza.keychain-db
+          ZP=$(openssl rand -base64 24)
+          security create-keychain -p "$ZP" "$ZINCIR"
+          security set-keychain-settings -lut 21600 "$ZINCIR"
+          security unlock-keychain -p "$ZP" "$ZINCIR"
+
+          echo "$P12" | base64 --decode > $RUNNER_TEMP/dagitim.p12
+          security import $RUNNER_TEMP/dagitim.p12 -P "$P12_PAROLA" \
+            -A -t cert -f pkcs12 -k "$ZINCIR"
+          # ⚠️ Bu satır olmazsa codesign her imzada parola soruyor ve
+          # koşu sessizce takılıyor (kimse cevap veremez).
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$ZP" "$ZINCIR" > /dev/null
+          security list-keychain -d user -s "$ZINCIR" login.keychain-db
+
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$PROFIL" | base64 --decode \
+            > ~/Library/MobileDevice/Provisioning\ Profiles/littlelight.mobileprovision
+          echo "kurulu sertifikalar:"
+          security find-identity -v -p codesigning "$ZINCIR"
+
+      - name: Derleme numarasını damgala
+        run: |
+          # ⚠️ App Store Connect AYNI derleme numarasını iki kez kabul
+          # etmiyor. Koşu numarası kullanılıyor: her zaman artıyor ve
+          # elle takip gerektirmiyor.
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion ${{ github.run_number }}" \
+            isik.xcodeproj/project.pbxproj 2>/dev/null || true
+          echo "CURRENT_PROJECT_VERSION=${{ github.run_number }}" >> $GITHUB_ENV
+
+      - name: Arşivle
+        run: |
+          set -o pipefail
+          if ! xcodebuild archive \
+            -project isik.xcodeproj \
+            -scheme isik \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath $RUNNER_TEMP/isik.xcarchive \
+            -allowProvisioningUpdates \
+            DEVELOPMENT_TEAM=${{ secrets.TAKIM_ID }} \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="Little Light App Store" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            > arsiv.log 2>&1; then
+              echo "=============== ARŞİV HATALARI ==============="
+              grep -E "error:" arsiv.log | sed "s|$PWD/||" | sort -u | head -60
+              echo "=============================================="
+              exit 1
+          fi
+          echo "✅ arşiv hazır"
+
+      - name: .ipa'ya çıkar
+        run: |
+          cat > $RUNNER_TEMP/disari.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>${{ secrets.TAKIM_ID }}</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>provisioningProfiles</key><dict>
+              <key>com.littlelightgame.app</key><string>Little Light App Store</string>
+            </dict>
+            <key>uploadSymbols</key><true/>
+          </dict></plist>
+          PLIST
+          set -o pipefail
+          if ! xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/isik.xcarchive \
+            -exportPath $RUNNER_TEMP/cikti \
+            -exportOptionsPlist $RUNNER_TEMP/disari.plist \
+            > cikar.log 2>&1; then
+              echo "=============== ÇIKARMA HATALARI ==============="
+              grep -E "error:|Error" cikar.log | sort -u | head -40
+              exit 1
+          fi
+          ls -lh $RUNNER_TEMP/cikti/
+
+      - name: App Store Connect'e yükle
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          # ⚠️ Anahtar ADI KALIBI ZORUNLU: AuthKey_<KEYID>.p8 ve
+          # ~/private_keys altında olmalı, yoksa araç anahtarı bulamıyor.
+          mkdir -p ~/private_keys
+          echo "$ASC_KEY_P8" > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+          IPA=$(ls $RUNNER_TEMP/cikti/*.ipa | head -1)
+          xcrun altool --upload-app -f "$IPA" -t ios \
+            --apiKey ${{ secrets.ASC_KEY_ID }} \
+            --apiIssuer ${{ secrets.ASC_ISSUER_ID }}
+          echo "✅ yüklendi — App Store Connect'te işlenmesi birkaç dakika sürer"
+
+      - name: Günlükleri sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testflight-gunlugu
+          path: |
+            arsiv.log
+            cikar.log
+          retention-days: 7
+          if-no-files-found: ignore
