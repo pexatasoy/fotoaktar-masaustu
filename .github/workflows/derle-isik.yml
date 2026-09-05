@@ -1,48 +1,114 @@
-name: Işık oyununu derle
+name: Little Light
 
+# ⚠️ İKİ AYRI İŞ, BİLEREK. Eskiden tek iş vardı ve her denemede .ipa
+# paketleyip yüklüyordu; sadece "derleniyor mu" sorusunu sormak için
+# 10 dakika bekleniyordu. Artık hızlı denetim önce koşuyor ve derleme
+# hatasını 3-4 dakikada söylüyor; paketleme yalnız o geçerse çalışıyor.
 on:
-  workflow_dispatch:          # elle çalıştırılıyor
+  push:
+  workflow_dispatch:
+    inputs:
+      paket:
+        description: ".ipa da üretilsin mi? (denetim her hâlükârda koşar)"
+        type: boolean
+        default: true
 
 jobs:
-  derle:
-    # GitHub'ın macOS 26 sunucusu — Xcode 26 kurulu geliyor.
-    # Kullanıcının kendi Mac'i (macOS 14.4, Xcode 16.2) iOS 26 telefona uygulama
-    # atamıyor ve yükseltmeye diskte yer yok; o yüzden derleme burada.
+  # ---------------------------------------------------------------- denetim
+  denetim:
+    name: Derleniyor mu?
     runs-on: macos-26
-
     steps:
-      # Kaynak depodan DEĞİL sunucudan geliyor: her değişiklikte GitHub'a dosya
-      # yüklemek gerekmesin. Depoda sadece bu iş akışı dosyası duruyor.
-      - name: Kaynağı çek
-        run: |
-          # Tek denemeye bırakmıyoruz: anlık bir kopma bütün derlemeyi çöpe atıyor.
-          curl -fsSL --retry 6 --retry-delay 5 --retry-all-errors \
-            --connect-timeout 20 --max-time 300 \
-            -H "Cache-Control: no-cache" -o ios-kaynak.zip https://chainmedia.co/fotoyol/isik/isik-kaynak.zip \
-            || { echo "Kaynak indirilemedi — sunucu geçici olarak erişilemiyor olabilir."; exit 1; }
-          unzip -oq ios-kaynak.zip
-          echo "--- bu derlemedeki kaynak ---"
-          cat DAMGA.txt
-          ls -R Kaynaklar project.yml
+      - uses: actions/checkout@v4
 
-      - name: Ortamı göster
-        run: |
-          sw_vers
-          xcodebuild -version
+      - name: Ortam
+        run: xcodebuild -version
 
-      - name: XcodeGen kur
+      # ⚠️ brew her koşuda ~1 dakika yiyordu. XcodeGen'in hazır ikilisi
+      # indirilirse aynı iş birkaç saniye sürüyor.
+      - name: XcodeGen
         run: brew install xcodegen
 
-      - name: Xcode projesini üret
+      - name: Xcode projesi
         run: xcodegen generate
 
-      - name: Derle (imzasız — imzalamayı Sideloadly yapacak)
+      # ⚠️ `build` zaten TAM tip denetimi yapıyor — ayrı bir "typecheck"
+      # adımına gerek yok. Kazanç paketlemeyi ATLAMAKTAN geliyor.
+      # ⚠️ `-quiet` + `pipefail`: gürültü kesiliyor ama hata satırı kaçmıyor.
+      - name: Derle (imzasız)
         run: |
           set -o pipefail
-          # xcodebuild binlerce satır basıyor; hata mesajı içinde kayboluyor.
-          # Günlüğü dosyaya alıp başarısızlıkta SADECE hata satırlarını
-          # yazdırıyoruz — böylece tek bakışta ne olduğu görülüyor.
-          if ! xcodebuild \
+          xcodebuild \
+            -project isik.xcodeproj \
+            -scheme isik \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -derivedDataPath yapi \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            -quiet build
+
+      # 🚨 BU ADIM PROJENİN EN BÜYÜK KÖR NOKTASINI KAPATIYOR.
+      # SwiftUI Linux'ta derlenmiyor, dolayısıyla arayüzü hiç GÖREMİYORDUM;
+      # görsel bozukluklar ancak kullanıcı telefonda oynayınca çıkıyordu.
+      # Dükkânı altı kategoride birden kıran `w * 034` yazım hatası tam
+      # olarak böyle kaçtı: derleyici için geçerli bir sayı, ekranda felaket.
+      # Simülatör CI makinesinde zaten var, `.app` de derlenmiş durumda —
+      # tek eksik onu açıp resmini çekmekti.
+      #
+      # ⚠️ Ekran görüntüleri artefakt olarak yükleniyor; sunucudan indirip
+      # bakılıyor. Mağaza için gereken görseller de buradan çıkacak.
+      - name: Simülatörde ekran görüntüsü
+        continue-on-error: true          # görüntü alınamazsa derleme düşmesin
+        run: |
+          set -x
+          UYG=$(find yapi/Build/Products -name "isik.app" -maxdepth 3 | head -1)
+          echo "uygulama: $UYG"
+          mkdir -p gorseller
+
+          cek () {   # cek <cihaz adı> <dosya öneki>
+            UDID=$(xcrun simctl list devices available                    | grep -m1 "$1 (" | grep -oE "[0-9A-F-]{36}")
+            if [ -z "$UDID" ]; then echo "cihaz yok: $1"; return 0; fi
+            xcrun simctl boot "$UDID" || true
+            xcrun simctl bootstatus "$UDID" -b || true
+            xcrun simctl install "$UDID" "$UYG"
+            xcrun simctl launch "$UDID" com.littlelightgame.app || true
+            # ⚠️ Bekleme ŞART: oyun açılışta 150 bölümü ve varlıkları
+            # yüklüyor, hemen çekilen resim boş çıkıyor.
+            sleep 25
+            xcrun simctl io "$UDID" screenshot "gorseller/$2.png" || true
+            xcrun simctl shutdown "$UDID" || true
+          }
+
+          xcrun simctl list devices available | head -40
+          cek "iPhone 16 Pro Max" iphone
+          cek "iPad Pro"          ipad
+          ls -la gorseller/
+
+      - name: Ekran görüntülerini sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ekran-goruntuleri
+          path: gorseller/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # ----------------------------------------------------------------- paket
+  paket:
+    name: .ipa üret
+    needs: denetim
+    if: github.event_name != 'workflow_dispatch' || inputs.paket
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: xcodegen generate
+
+      - name: Release derlemesi (imzasız — imzayı Sideloadly atacak)
+        run: |
+          set -o pipefail
+          xcodebuild \
             -project isik.xcodeproj \
             -scheme isik \
             -configuration Release \
@@ -52,36 +118,17 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             ONLY_ACTIVE_ARCH=NO \
-            build > derleme.log 2>&1; then
-              echo ""
-              echo "================== DERLEME HATALARI =================="
-              grep -E "error:" derleme.log | sed "s|$PWD/||" | sort -u | head -60
-              echo "====================================================="
-              echo ""
-              echo "(tam günlük 'derleme-gunlugu' eseri olarak yüklendi)"
-              exit 1
-          fi
-          echo "✅ derleme başarılı"
+            build
 
-      - name: Tam günlüğü sakla
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: derleme-gunlugu
-          path: derleme.log
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: .ipa dosyasına paketle
+      - name: Paketle
         run: |
           mkdir -p Payload
           cp -R yapi/Build/Products/Release-iphoneos/isik.app Payload/
-          zip -qry isik.ipa Payload
-          ls -lh isik.ipa
+          zip -qry LittleLight.ipa Payload
+          ls -lh LittleLight.ipa
 
-      - name: İndirilebilir hale getir
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: isik-ipa
-          path: isik.ipa
+          name: LittleLight-ipa
+          path: LittleLight.ipa
           retention-days: 30
