@@ -114,7 +114,10 @@ jobs:
             # ⚠️ Dil simülatörün kendi ayarından değil, uygulamanın
             # `-AppleLanguages` bayrağından geliyor: mağaza görselleri
             # hem Türkçe hem İngilizce lazım.
-            if [ -n "$3" ]; then EK="-perde $3"; else EK=""; fi
+            # ⚠️ 3. parametre TAM BAYRAK: "-perde dukkan" ya da
+            # "-sahne bolum:33". Eskiden yalnız perde adıydı ve önüne
+            # "-perde" ekleniyordu; oyun ekranları eklenince yetmedi.
+            EK="$3"
             xcrun simctl launch "$UDID" com.littlelightgame.app \
               -AppleLanguages "($2)" -AppleLocale "$2" $EK || true
             # ⚠️ Bekleme ŞART: açılışta 150 bölüm ve varlıklar yükleniyor;
@@ -127,16 +130,27 @@ jobs:
           TEL="iPhone 17 Pro Max"
           TAB="iPad Pro 13-inch (M5)"
 
-          cek "$TEL" tr ""          tel_menu_tr
-          cek "$TEL" en ""          tel_menu_en
-          cek "$TEL" tr "dukkan"    tel_dukkan_tr
-          cek "$TEL" en "dukkan"    tel_dukkan_en
-          cek "$TEL" tr "ayarlar"   tel_ayarlar_tr
-          cek "$TEL" en "ayarlar"   tel_ayarlar_en
-          cek "$TEL" tr "profil"    tel_profil_tr
-          cek "$TEL" tr "modlar"    tel_modlar_tr
-          cek "$TAB" tr ""          tab_menu_tr
-          cek "$TAB" tr "dukkan"    tab_dukkan_tr
+          # ⚠️ İki ayrı bayrak var: `-perde` menü perdelerini (Menu.swift),
+          # `-sahne` kök ekranları (IsikApp.swift) açıyor. Vitrinin en
+          # önemli görseli tahtanın kendisi, o yüzden farklı dünyalardan
+          # bölümler çekiliyor — her dünyanın kendi odası ve paleti var.
+          cek "$TEL" tr ""              tel_menu_tr
+          cek "$TEL" en ""              tel_menu_en
+          cek "$TEL" tr "-sahne bolum:2"    tel_bolum_d1
+          cek "$TEL" tr "-sahne bolum:33"   tel_bolum_d3
+          cek "$TEL" tr "-sahne bolum:63"   tel_bolum_d5
+          cek "$TEL" tr "-sahne bolum:93"   tel_bolum_d7
+          cek "$TEL" tr "-sahne bolum:123"  tel_bolum_d9
+          cek "$TEL" tr "-sahne liste"      tel_liste
+          cek "$TEL" tr "-sahne gunluk"     tel_gunluk
+          cek "$TEL" tr "-sahne kilit"      tel_kilit
+          cek "$TEL" tr "-perde dukkan"     tel_dukkan_tr
+          cek "$TEL" en "-perde dukkan"     tel_dukkan_en
+          cek "$TEL" tr "-perde ayarlar"    tel_ayarlar_tr
+          cek "$TEL" tr "-perde profil"     tel_profil_tr
+          cek "$TEL" tr "-perde modlar"     tel_modlar_tr
+          cek "$TAB" tr ""                  tab_menu_tr
+          cek "$TAB" tr "-sahne bolum:33"   tab_bolum_d3
 
           ls -la gorseller/ || true
 
