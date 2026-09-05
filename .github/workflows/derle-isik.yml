@@ -97,25 +97,47 @@ jobs:
           echo "uygulama: $UYG"
           [ -z "$UYG" ] && exit 0
           mkdir -p gorseller
-          xcrun simctl list devices available
 
-          cek () {   # cek <cihaz adı parçası> <dosya adı>
+          # ⚠️ CİHAZ ADLARI KOŞUCUYLA DEĞİŞİYOR. İlk denemede "iPhone 16
+          # Pro Max" arandı, makinede 17 serisi vardı ve iPhone görüntüsü
+          # hiç alınmadı. Ad tam eşleşmezse adım sessizce geçiyor, o yüzden
+          # önce listeyi basıyoruz.
+          xcrun simctl list devices available | grep -E "iPhone|iPad" | head -20
+
+          cek () {   # cek <cihaz adı> <dil> <perde> <dosya adı>
             UDID=$(xcrun simctl list devices available \
-                   | grep -m1 "$1" | grep -oE "[0-9A-F-]{36}") || true
+                   | grep -m1 "$1 (" | grep -oE "[0-9A-F-]{36}") || true
             if [ -z "$UDID" ]; then echo "cihaz bulunamadı: $1"; return 0; fi
-            xcrun simctl boot "$UDID" || true
-            xcrun simctl bootstatus "$UDID" -b || true
+            xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
+            xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
             xcrun simctl install "$UDID" "$UYG" || return 0
-            xcrun simctl launch "$UDID" com.littlelightgame.app || true
+            # ⚠️ Dil simülatörün kendi ayarından değil, uygulamanın
+            # `-AppleLanguages` bayrağından geliyor: mağaza görselleri
+            # hem Türkçe hem İngilizce lazım.
+            if [ -n "$3" ]; then EK="-perde $3"; else EK=""; fi
+            xcrun simctl launch "$UDID" com.littlelightgame.app \
+              -AppleLanguages "($2)" -AppleLocale "$2" $EK || true
             # ⚠️ Bekleme ŞART: açılışta 150 bölüm ve varlıklar yükleniyor;
             # hemen çekilen resim boş çıkıyor.
-            sleep 30
-            xcrun simctl io "$UDID" screenshot "gorseller/$2.png" || true
-            xcrun simctl shutdown "$UDID" || true
+            sleep 28
+            xcrun simctl io "$UDID" screenshot "gorseller/$4.png" || true
+            xcrun simctl terminate "$UDID" com.littlelightgame.app || true
           }
 
-          cek "iPhone 16 Pro Max" iphone16promax
-          cek "iPad Pro"          ipadpro
+          TEL="iPhone 17 Pro Max"
+          TAB="iPad Pro 13-inch (M5)"
+
+          cek "$TEL" tr ""          tel_menu_tr
+          cek "$TEL" en ""          tel_menu_en
+          cek "$TEL" tr "dukkan"    tel_dukkan_tr
+          cek "$TEL" en "dukkan"    tel_dukkan_en
+          cek "$TEL" tr "ayarlar"   tel_ayarlar_tr
+          cek "$TEL" en "ayarlar"   tel_ayarlar_en
+          cek "$TEL" tr "profil"    tel_profil_tr
+          cek "$TEL" tr "modlar"    tel_modlar_tr
+          cek "$TAB" tr ""          tab_menu_tr
+          cek "$TAB" tr "dukkan"    tab_dukkan_tr
+
           ls -la gorseller/ || true
 
       - name: Ekran görüntülerini sakla
