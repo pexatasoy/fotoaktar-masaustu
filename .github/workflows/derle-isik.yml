@@ -160,7 +160,20 @@ jobs:
           # Mektup kâğıdı sahnenin üstünde okunuyor mu (ışık çekilmiş hâli)
           cek "$TEL" tr "-sahne mektup:1 -mektupAn 6.0" tel_mektup_d1_yazi
           cek "$TEL" tr "-sahne mektup:8 -mektupAn 6.0" tel_mektup_d8_yazi
+          # 🚨 GÖREMEDİĞİM EKRAN = DOĞRULANMAMIŞ EKRAN. Aşağıdaki dördü
+          # hiç görüntülenmiyordu, dolayısıyla yerleşimleri kör yazılmıştı.
+          cek "$TEL" tr "-perde kunye"      tel_kunye_tr
+          cek "$TEL" en "-perde kunye"      tel_kunye_en
+          # Öğretici kartı — dokunuş işareti EN BELİRGİN anında dondurulmuş.
+          # ⚠️ `-dersAn` olmadan işaret 1,7 sn'lik turun 0,8 sn'sinde
+          # görünüyor, çekimde yakalanması kuraya kalıyordu.
+          cek "$TEL" tr "-sahne ders:2 -dersAn 1.0"  tel_ders
+          # Menü kilitler AÇIKKEN: "sonsuz" ve "vitrin" düğmeleri temiz
+          # kurulumda kapalı, yerleşimleri hiçbir karede görünmüyordu.
+          cek "$TEL" tr "-sahne kilitsiz"   tel_menu_acik
+          cek "$TEL" tr "-sahne kilitsiz -perde modlar" tel_modlar_acik
           cek "$TAB" tr ""                  tab_menu_tr
+          cek "$TAB" tr "-sahne kilitsiz"   tab_menu_acik
           cek "$TAB" tr "-sahne bolum:33"   tab_bolum_d3
 
           ls -la gorseller/ || true
