@@ -149,6 +149,17 @@ jobs:
           cek "$TEL" tr "-perde ayarlar"    tel_ayarlar_tr
           cek "$TEL" tr "-perde profil"     tel_profil_tr
           cek "$TEL" tr "-perde modlar"     tel_modlar_tr
+          # Mektup sahneleri — dokuz dünyanın ışığı, ışığın en güçlü anında
+          # dondurulmuş. ⚠️ `-mektupAn` olmadan hepsi sönmüş hâlde çıkıyor:
+          # sahne 5 saniyede akıp geçiyor, görüntü 28. saniyede alınıyor.
+          # Bakılacak şey: ışık sahnedeki GERÇEK kaynaktan mı çıkıyor
+          # (pencere, fener odası, kuyu ağzı) ve kenarları düz mü.
+          for D in 1 2 3 4 5 6 7 8 9; do
+            cek "$TEL" tr "-sahne mektup:$D -mektupAn 2.0" tel_mektup_d$D
+          done
+          # Mektup kâğıdı sahnenin üstünde okunuyor mu (ışık çekilmiş hâli)
+          cek "$TEL" tr "-sahne mektup:1 -mektupAn 6.0" tel_mektup_d1_yazi
+          cek "$TEL" tr "-sahne mektup:8 -mektupAn 6.0" tel_mektup_d8_yazi
           cek "$TAB" tr ""                  tab_menu_tr
           cek "$TAB" tr "-sahne bolum:33"   tab_bolum_d3
 
