@@ -169,6 +169,15 @@ jobs:
           cek "$TEL" tr "-sahne bolum:17"   tel_bolum_d2
           cek "$TEL" tr "-perde muze"       tel_muze
           cek "$TEL" tr "-sahne sonsuz"     tel_sonsuz
+          # 🚨 VİTRİNDE KULLANILAN HER EKRANIN İNGİLİZCESİ DE ŞART.
+          # İngilizce mağaza sayfasında Türkçe arayüz ("Bölüm 4", "hamle 0")
+          # görünmesi, indiren kişiye yanlış söz vermek olur.
+          cek "$TEL" en "-sahne bolum:17"   tel_bolum_d2_en
+          cek "$TEL" en "-sahne bolum:33"   tel_bolum_d3_en
+          cek "$TEL" en "-perde muze"       tel_muze_en
+          cek "$TEL" en "-sahne sonsuz"     tel_sonsuz_en
+          cek "$TEL" en "-sahne gunluk"     tel_gunluk_en
+          cek "$TEL" en "-sahne mektup:1 -mektupAn 6.0" tel_mektup_d1_yazi_en
           cek "$TEL" tr "-perde kunye"      tel_kunye_tr
           cek "$TEL" en "-perde kunye"      tel_kunye_en
           # Öğretici kartı — dokunuş işareti EN BELİRGİN anında dondurulmuş.
