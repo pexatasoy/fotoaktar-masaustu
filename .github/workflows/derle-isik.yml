@@ -178,6 +178,15 @@ jobs:
           cek "$TEL" en "-sahne sonsuz"     tel_sonsuz_en
           cek "$TEL" en "-sahne gunluk"     tel_gunluk_en
           cek "$TEL" en "-sahne mektup:1 -mektupAn 6.0" tel_mektup_d1_yazi_en
+          # 🚨 VİTRİNİN MENÜ KARESİ İÇİN GECE MANZARASI. Vitrinin zemini
+          # tavan arası; menünün varsayılan manzarası da tavan arası, yani
+          # "odanın içinde oda" çıkıyor ve pencere iki ayrı ölçekte iki kez
+          # görünüyor. Gece manzarası hem ayrışıyor hem dükkândaki bir
+          # kozmetiği gösteriyor.
+          # ⚠️ Sonrasında batıma geri alınıyor: manzara kaydı kalıcı.
+          cek "$TEL" tr "-sahne manzara:gece"  tel_menu_gece
+          cek "$TEL" en "-sahne manzara:gece"  tel_menu_gece_en
+          cek "$TEL" tr "-sahne manzara:batim" tel_menu_batim
           cek "$TEL" tr "-perde kunye"      tel_kunye_tr
           cek "$TEL" en "-perde kunye"      tel_kunye_en
           # Öğretici kartı — dokunuş işareti EN BELİRGİN anında dondurulmuş.
