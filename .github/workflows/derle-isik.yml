@@ -162,6 +162,13 @@ jobs:
           cek "$TEL" tr "-sahne mektup:8 -mektupAn 6.0" tel_mektup_d8_yazi
           # 🚨 GÖREMEDİĞİM EKRAN = DOĞRULANMAMIŞ EKRAN. Aşağıdaki dördü
           # hiç görüntülenmiyordu, dolayısıyla yerleşimleri kör yazılmıştı.
+          # Vitrin kareleri için eksik ekranlar.
+          # ⚠️ 2. DÜNYA: CI 1,3,5,7,9'u çekiyordu; 2. dünya hiç yoktu ve
+          # vitrinin ilk karesi oradan olacak (1. dünya da tavan arası
+          # olduğu için oda içinde oda çıkıyor).
+          cek "$TEL" tr "-sahne bolum:17"   tel_bolum_d2
+          cek "$TEL" tr "-perde muze"       tel_muze
+          cek "$TEL" tr "-sahne sonsuz"     tel_sonsuz
           cek "$TEL" tr "-perde kunye"      tel_kunye_tr
           cek "$TEL" en "-perde kunye"      tel_kunye_en
           # Öğretici kartı — dokunuş işareti EN BELİRGİN anında dondurulmuş.
@@ -172,6 +179,12 @@ jobs:
           # kurulumda kapalı, yerleşimleri hiçbir karede görünmüyordu.
           cek "$TEL" tr "-sahne kilitsiz"   tel_menu_acik
           cek "$TEL" tr "-sahne kilitsiz -perde modlar" tel_modlar_acik
+          # Dükkândan alınan iki manzara — açılışın rengi de bunlardan geliyor.
+          cek "$TEL" tr "-sahne manzara:sis"  tel_menu_sis
+          cek "$TEL" tr "-sahne manzara:gece" tel_menu_gece
+          # ⚠️ Manzara kaydı simülatörde KALICI: batıma geri alınmazsa
+          # sonraki turun bütün menü kareleri gece çıkar.
+          cek "$TEL" tr "-sahne manzara:batim" tel_menu_batim
           cek "$TAB" tr ""                  tab_menu_tr
           cek "$TAB" tr "-sahne kilitsiz"   tab_menu_acik
           cek "$TAB" tr "-sahne bolum:33"   tab_bolum_d3
