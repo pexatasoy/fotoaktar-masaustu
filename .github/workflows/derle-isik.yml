@@ -184,6 +184,10 @@ jobs:
           # görünüyor. Gece manzarası hem ayrışıyor hem dükkândaki bir
           # kozmetiği gösteriyor.
           # ⚠️ Sonrasında batıma geri alınıyor: manzara kaydı kalıcı.
+          # ⚠️ ÖNCE GELİŞTİRİCİ MODUNU KAPAT: yukarıdaki "sonsuz" ve
+          # "kilitsiz" bayrakları onu açıyor ve simülatörde kalıcı;
+          # vitrinin menü karesinde cüzdan 999.999 çıkıyordu.
+          cek "$TEL" tr "-sahne kilitli"       tel_kilitli
           cek "$TEL" tr "-sahne manzara:gece"  tel_menu_gece
           cek "$TEL" en "-sahne manzara:gece"  tel_menu_gece_en
           cek "$TEL" tr "-sahne manzara:batim" tel_menu_batim
