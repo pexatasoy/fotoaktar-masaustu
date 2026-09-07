@@ -188,6 +188,7 @@ jobs:
           # "kilitsiz" bayrakları onu açıyor ve simülatörde kalıcı;
           # vitrinin menü karesinde cüzdan 999.999 çıkıyordu.
           cek "$TEL" tr "-sahne kilitli"       tel_kilitli
+          cek "$TEL" tr "-sahne manzara:sis"   tel_menu_sis
           cek "$TEL" tr "-sahne manzara:gece"  tel_menu_gece
           cek "$TEL" en "-sahne manzara:gece"  tel_menu_gece_en
           cek "$TEL" tr "-sahne manzara:batim" tel_menu_batim
@@ -199,14 +200,12 @@ jobs:
           cek "$TEL" tr "-sahne ders:2 -dersAn 1.0"  tel_ders
           # Menü kilitler AÇIKKEN: "sonsuz" ve "vitrin" düğmeleri temiz
           # kurulumda kapalı, yerleşimleri hiçbir karede görünmüyordu.
+          # ⚠️ EN SONA: bu iki kare geliştirici modunu AÇIYOR ve kayıt
+          # simülatörde kalıcı. Daha önce alınırsa sonraki karelerde
+          # cüzdan 999.999 çıkıyor ve kilitli düğmeler açık görünüyor —
+          # vitrinin menü karesine tam olarak böyle sızmıştı.
           cek "$TEL" tr "-sahne kilitsiz"   tel_menu_acik
           cek "$TEL" tr "-sahne kilitsiz -perde modlar" tel_modlar_acik
-          # Dükkândan alınan iki manzara — açılışın rengi de bunlardan geliyor.
-          cek "$TEL" tr "-sahne manzara:sis"  tel_menu_sis
-          cek "$TEL" tr "-sahne manzara:gece" tel_menu_gece
-          # ⚠️ Manzara kaydı simülatörde KALICI: batıma geri alınmazsa
-          # sonraki turun bütün menü kareleri gece çıkar.
-          cek "$TEL" tr "-sahne manzara:batim" tel_menu_batim
           cek "$TAB" tr ""                  tab_menu_tr
           cek "$TAB" tr "-sahne kilitsiz"   tab_menu_acik
           cek "$TAB" tr "-sahne bolum:33"   tab_bolum_d3
