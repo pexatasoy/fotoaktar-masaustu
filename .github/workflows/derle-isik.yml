@@ -82,6 +82,60 @@ jobs:
       # yani gerçek cihaz içindir, simülatörde çalışmaz (mimari farklı).
       # ⚠️ Bütün adım `continue-on-error`: ekran görüntüsü alınamazsa
       # .ipa üretimi düşmemeli, o asıl iş.
+      # 🚨 iPad ÇÖKME TESTİ — Apple derleme 2'yi 2.1(a)'dan reddetti:
+      # "crashed on launch", cihaz iPad Air 11-inch (M3), iPadOS 26.6.1.
+      # Oyun iPhone-only (TARGETED_DEVICE_FAMILY 1) ama iPhone uygulamaları
+      # iPad'e kurulabiliyor ve Apple orada da açıp bakıyor.
+      # ⚠️ Bu adım BİLEREK hatayı yutmuyor: ekran görüntüsü adımındaki
+      # `|| true` zinciri çökmeyi aylarca sessizce gizledi.
+      - name: iPad çökme testi
+        continue-on-error: true
+        run: |
+          set -x
+          xcodebuild \
+            -project isik.xcodeproj -scheme isik \
+            -configuration Debug -sdk iphonesimulator \
+            -derivedDataPath simpad \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            -quiet build || exit 0
+          UYG=$(find simpad/Build/Products -name "isik.app" -maxdepth 3 | head -1)
+          [ -z "$UYG" ] && { echo "uygulama yok"; exit 0; }
+
+          xcrun simctl list devices available | grep iPad
+          # Apple'ın kullandığı cihazı ara, yoksa herhangi bir iPad
+          UDID=$(xcrun simctl list devices available | grep -m1 "iPad Air 11-inch" | grep -oE "[0-9A-F-]{36}")
+          [ -z "$UDID" ] && UDID=$(xcrun simctl list devices available | grep -m1 "iPad" | grep -oE "[0-9A-F-]{36}")
+          echo "iPad UDID: $UDID"
+          [ -z "$UDID" ] && { echo "iPad simülatörü yok"; exit 0; }
+
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b || true
+          rm -rf ~/Library/Logs/DiagnosticReports/*
+          xcrun simctl install "$UDID" "$UYG"
+          xcrun simctl launch --console-pty "$UDID" com.littlelightgame.app > ipad_konsol.txt 2>&1 &
+          KPID=$!
+          sleep 40
+          kill $KPID 2>/dev/null || true
+
+          echo "===== KONSOL ====="
+          tail -80 ipad_konsol.txt || true
+
+          echo "===== SUREC AYAKTA MI ====="
+          if xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -q littlelightgame; then
+            echo "AYAKTA — cokme yok"
+          else
+            echo "🚨 SUREC YOK — COKMUS OLABILIR"
+          fi
+
+          echo "===== COKME RAPORLARI ====="
+          find ~/Library/Logs/DiagnosticReports -name "*isik*" -o -name "*ips*" 2>/dev/null | head -5 | while read f; do
+            echo "--- $f ---"; head -120 "$f"
+          done
+
+          echo "===== EKRAN ====="
+          mkdir -p gorseller
+          xcrun simctl io "$UDID" screenshot gorseller/ipad_acilis.png || true
+
       - name: Simülatör derlemesi ve ekran görüntüsü
         continue-on-error: true
         run: |
