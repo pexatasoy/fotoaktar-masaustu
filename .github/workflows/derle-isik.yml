@@ -269,47 +269,58 @@ jobs:
         run: |
           UYG=$(find sim/Build/Products -name "isik.app" -maxdepth 3 | head -1)
           echo "uygulama: $UYG"
-          xcrun simctl list devices available | grep iPad || true
-          UDID=$(xcrun simctl list devices available | grep -m1 "iPad Air 11-inch" | grep -oE "[0-9A-F-]{36}")
-          [ -z "$UDID" ] && UDID=$(xcrun simctl list devices available | grep -m1 "iPad" | grep -oE "[0-9A-F-]{36}")
-          echo "iPad: $UDID"
-          xcrun simctl boot "$UDID" || true
-          xcrun simctl bootstatus "$UDID" -b || true
-          xcrun simctl install "$UDID" "$UYG"
+          mkdir -p tani
 
-          dene () {   # dene <dil>
-            echo "════════ DIL: $1 ════════"
+          dene () {   # dene <cihaz adı> <dil>
+            echo "════════ $1 · $2 ════════"
+            UDID=$(xcrun simctl list devices available | grep -m1 "$1 (" | grep -oE "[0-9A-F-]{36}")
+            if [ -z "$UDID" ]; then echo "cihaz yok: $1"; return 0; fi
+            ETIKET=$(echo "$1$2" | tr -cd '[:alnum:]')
+            xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
+            xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
+            xcrun simctl install "$UDID" "$UYG"
             rm -rf ~/Library/Logs/DiagnosticReports/* || true
-            xcrun simctl terminate "$UDID" com.littlelightgame.app 2>/dev/null || true
-            # ⚠️ --console-pty ŞART: Swift tuzağının mesajı ("Fatal error: …")
-            # yalnız uygulamanın standart çıktısında görünüyor.
-            # ⚠️ macOS'ta `timeout` YOK (coreutils gelmiyor) — ilk denemede
-            # "timeout: command not found" verip uygulama hiç açılmadı.
-            # Arka plana atıp elle öldürüyoruz.
-            xcrun simctl launch --console-pty "$UDID" \
-              com.littlelightgame.app -AppleLanguages "($1)" -AppleLocale "$1" \
-              > konsol_$1.txt 2>&1 &
+
+            xcrun simctl launch --console-pty "$UDID" com.littlelightgame.app \
+              -AppleLanguages "($2)" -AppleLocale "$2" > tani/konsol_$ETIKET.txt 2>&1 &
             KPID=$!
-            sleep 40
+            sleep 35
+
+            # 🚨 SIRA ÖNEMLİ: önce bak, SONRA öldür. İlk denemede ekran
+            # görüntüsü kill'den SONRA alınıyordu ve ana ekran çıkıyordu —
+            # çökmeyi ben yaratmış olabilirdim, ölçüm işe yaramazdı.
+            echo "----- surec ayakta mi -----"
+            if xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -q littlelightgame; then
+              echo "AYAKTA"
+            else
+              echo "🚨 SUREC YOK"
+            fi
+            xcrun simctl io "$UDID" screenshot "tani/$ETIKET.png" >/dev/null 2>&1 || true
+
             kill $KPID 2>/dev/null || true
-            echo "----- konsol (son 60) -----"
-            tail -60 konsol_$1.txt || true
-            echo "----- FATAL / CRASH satirlari -----"
-            grep -iE "fatal|crash|precondition|Trace/BPT|index out of range|unexpectedly found nil" konsol_$1.txt || echo "(konsolda yok)"
+            echo "----- konsol -----"
+            cat tani/konsol_$ETIKET.txt || true
             echo "----- cokme raporlari -----"
-            for f in ~/Library/Logs/DiagnosticReports/*isik*; do
+            BULDU=0
+            for f in ~/Library/Logs/DiagnosticReports/*; do
               [ -e "$f" ] || continue
-              echo "### $f"
-              head -60 "$f"
+              case "$f" in *isik*|*Little*) ;; *) continue;; esac
+              BULDU=1; echo "### $f"; head -70 "$f"; cp "$f" tani/ 2>/dev/null || true
             done
-            mkdir -p tani
-            cp konsol_$1.txt tani/ 2>/dev/null || true
-            cp ~/Library/Logs/DiagnosticReports/*isik* tani/ 2>/dev/null || true
-            xcrun simctl io "$UDID" screenshot "tani/ipad_$1.png" || true
+            # ⚠️ Simülatör raporu cihazın kendi klasörüne de düşebiliyor.
+            for f in ~/Library/Developer/CoreSimulator/Devices/$UDID/data/Library/Logs/CrashReporter/*; do
+              [ -e "$f" ] || continue
+              BULDU=1; echo "### $f"; head -70 "$f"; cp "$f" tani/ 2>/dev/null || true
+            done
+            [ "$BULDU" = 0 ] && echo "(cokme raporu yok)"
+            xcrun simctl terminate "$UDID" com.littlelightgame.app 2>/dev/null || true
           }
 
-          dene en
-          dene tr
+          # Apple'ın kullandığı cihaz Air 11", bizim çalışan karemiz Pro 13".
+          dene "iPad Air 11-inch" en
+          dene "iPad Air 11-inch" tr
+          dene "iPad Pro 13-inch" en
+
       - name: Tanıyı sakla
         if: always()
         uses: actions/upload-artifact@v4
