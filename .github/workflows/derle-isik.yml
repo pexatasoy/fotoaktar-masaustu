@@ -82,60 +82,6 @@ jobs:
       # yani gerçek cihaz içindir, simülatörde çalışmaz (mimari farklı).
       # ⚠️ Bütün adım `continue-on-error`: ekran görüntüsü alınamazsa
       # .ipa üretimi düşmemeli, o asıl iş.
-      # 🚨 iPad ÇÖKME TESTİ — Apple derleme 2'yi 2.1(a)'dan reddetti:
-      # "crashed on launch", cihaz iPad Air 11-inch (M3), iPadOS 26.6.1.
-      # Oyun iPhone-only (TARGETED_DEVICE_FAMILY 1) ama iPhone uygulamaları
-      # iPad'e kurulabiliyor ve Apple orada da açıp bakıyor.
-      # ⚠️ Bu adım BİLEREK hatayı yutmuyor: ekran görüntüsü adımındaki
-      # `|| true` zinciri çökmeyi aylarca sessizce gizledi.
-      - name: iPad çökme testi
-        continue-on-error: true
-        run: |
-          set -x
-          xcodebuild \
-            -project isik.xcodeproj -scheme isik \
-            -configuration Debug -sdk iphonesimulator \
-            -derivedDataPath simpad \
-            CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
-            -quiet build || exit 0
-          UYG=$(find simpad/Build/Products -name "isik.app" -maxdepth 3 | head -1)
-          [ -z "$UYG" ] && { echo "uygulama yok"; exit 0; }
-
-          xcrun simctl list devices available | grep iPad
-          # Apple'ın kullandığı cihazı ara, yoksa herhangi bir iPad
-          UDID=$(xcrun simctl list devices available | grep -m1 "iPad Air 11-inch" | grep -oE "[0-9A-F-]{36}")
-          [ -z "$UDID" ] && UDID=$(xcrun simctl list devices available | grep -m1 "iPad" | grep -oE "[0-9A-F-]{36}")
-          echo "iPad UDID: $UDID"
-          [ -z "$UDID" ] && { echo "iPad simülatörü yok"; exit 0; }
-
-          xcrun simctl boot "$UDID" || true
-          xcrun simctl bootstatus "$UDID" -b || true
-          rm -rf ~/Library/Logs/DiagnosticReports/*
-          xcrun simctl install "$UDID" "$UYG"
-          xcrun simctl launch --console-pty "$UDID" com.littlelightgame.app > ipad_konsol.txt 2>&1 &
-          KPID=$!
-          sleep 40
-          kill $KPID 2>/dev/null || true
-
-          echo "===== KONSOL ====="
-          tail -80 ipad_konsol.txt || true
-
-          echo "===== SUREC AYAKTA MI ====="
-          if xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -q littlelightgame; then
-            echo "AYAKTA — cokme yok"
-          else
-            echo "🚨 SUREC YOK — COKMUS OLABILIR"
-          fi
-
-          echo "===== COKME RAPORLARI ====="
-          find ~/Library/Logs/DiagnosticReports -name "*isik*" -o -name "*ips*" 2>/dev/null | head -5 | while read f; do
-            echo "--- $f ---"; head -120 "$f"
-          done
-
-          echo "===== EKRAN ====="
-          mkdir -p gorseller
-          xcrun simctl io "$UDID" screenshot gorseller/ipad_acilis.png || true
-
       - name: Simülatör derlemesi ve ekran görüntüsü
         continue-on-error: true
         run: |
@@ -288,3 +234,79 @@ jobs:
           name: isik-ipa
           path: isik.ipa
           retention-days: 30
+
+  # 🚨 AYRI İŞ: iPad çökme testi.
+  # Apple derleme 2'yi 2.1(a)'dan reddetti ("crashed on launch",
+  # iPad Air 11-inch M3, iPadOS 26.6.1). Oyun iPhone-only ama iPhone
+  # uygulamaları iPad'e kurulabiliyor ve Apple orada da açıyor.
+  # ⚠️ NEDEN AYRI İŞ: `derle` işinin ekran görüntüsü adımı 30+ dakika
+  # sürüyor ve GitHub iş bitmeden adım günlüğünü vermiyor. Bu iş tek
+  # başına birkaç dakikada bitip günlüğünü teslim ediyor.
+  # ⚠️ İKİ DİL BİRDEN: iPad kareleri bugüne kadar YALNIZ Türkçe
+  # çekiliyordu, İngilizce yalnız telefonda. iPad+İngilizce hiç
+  # denenmemişti — çökmenin saklandığı boşluk tam orasıydı.
+  ipad-cokme:
+    runs-on: macos-26
+    steps:
+      - name: Kaynağı çek
+        run: |
+          curl -fsSL --retry 6 --retry-delay 5 --retry-all-errors \
+            --connect-timeout 20 --max-time 300 \
+            -H "Cache-Control: no-cache" -o ios-kaynak.zip https://chainmedia.co/fotoyol/isik/isik-kaynak.zip
+          unzip -oq ios-kaynak.zip
+          cat DAMGA.txt
+      - name: XcodeGen kur
+        run: brew install xcodegen
+      - name: Xcode projesini üret
+        run: xcodegen generate
+      - name: Simülatör derlemesi
+        run: |
+          xcodebuild -project isik.xcodeproj -scheme isik \
+            -configuration Debug -sdk iphonesimulator \
+            -derivedDataPath sim \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -quiet build
+      - name: iPad'de aç ve çökmeyi yakala
+        run: |
+          UYG=$(find sim/Build/Products -name "isik.app" -maxdepth 3 | head -1)
+          echo "uygulama: $UYG"
+          xcrun simctl list devices available | grep iPad || true
+          UDID=$(xcrun simctl list devices available | grep -m1 "iPad Air 11-inch" | grep -oE "[0-9A-F-]{36}")
+          [ -z "$UDID" ] && UDID=$(xcrun simctl list devices available | grep -m1 "iPad" | grep -oE "[0-9A-F-]{36}")
+          echo "iPad: $UDID"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b || true
+          xcrun simctl install "$UDID" "$UYG"
+
+          dene () {   # dene <dil>
+            echo "════════ DIL: $1 ════════"
+            rm -rf ~/Library/Logs/DiagnosticReports/* || true
+            xcrun simctl terminate "$UDID" com.littlelightgame.app 2>/dev/null || true
+            # ⚠️ --console-pty ŞART: Swift tuzağının mesajı ("Fatal error: …")
+            # yalnız uygulamanın standart çıktısında görünüyor.
+            timeout 45 xcrun simctl launch --console-pty "$UDID" \
+              com.littlelightgame.app -AppleLanguages "($1)" -AppleLocale "$1" \
+              > konsol_$1.txt 2>&1 || true
+            echo "----- konsol (son 60) -----"
+            tail -60 konsol_$1.txt || true
+            echo "----- FATAL / CRASH satirlari -----"
+            grep -iE "fatal|crash|precondition|Trace/BPT|index out of range|unexpectedly found nil" konsol_$1.txt || echo "(konsolda yok)"
+            echo "----- cokme raporlari -----"
+            for f in ~/Library/Logs/DiagnosticReports/*isik*; do
+              [ -e "$f" ] || continue
+              echo "### $f"
+              head -60 "$f"
+            done
+            mkdir -p tani
+            cp konsol_$1.txt tani/ 2>/dev/null || true
+            cp ~/Library/Logs/DiagnosticReports/*isik* tani/ 2>/dev/null || true
+            xcrun simctl io "$UDID" screenshot "tani/ipad_$1.png" || true
+          }
+
+          dene en
+          dene tr
+      - name: Tanıyı sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipad-tani
+          path: tani/
