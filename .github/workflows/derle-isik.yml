@@ -302,14 +302,14 @@ jobs:
             cat tani/konsol_$ETIKET.txt || true
             echo "----- cokme raporlari -----"
             BULDU=0
-            for f in ~/Library/Logs/DiagnosticReports/*; do
-              [ -e "$f" ] || continue
+            for f in $(find ~/Library/Logs/DiagnosticReports -type f 2>/dev/null); do
               case "$f" in *isik*|*Little*) ;; *) continue;; esac
               BULDU=1; echo "### $f"; head -70 "$f"; cp "$f" tani/ 2>/dev/null || true
             done
             # ⚠️ Simülatör raporu cihazın kendi klasörüne de düşebiliyor.
-            for f in ~/Library/Developer/CoreSimulator/Devices/$UDID/data/Library/Logs/CrashReporter/*; do
-              [ -e "$f" ] || continue
+            # ⚠️ Bu klasörde DİZİN de var (CrashReporter/Assistant) — `head`
+            # dizinde hata verip bütün adımı düşürdü. Yalnız düz dosya.
+            for f in $(find ~/Library/Developer/CoreSimulator/Devices/$UDID/data/Library/Logs/CrashReporter -type f 2>/dev/null); do
               BULDU=1; echo "### $f"; head -70 "$f"; cp "$f" tani/ 2>/dev/null || true
             done
             [ "$BULDU" = 0 ] && echo "(cokme raporu yok)"
