@@ -283,9 +283,15 @@ jobs:
             xcrun simctl terminate "$UDID" com.littlelightgame.app 2>/dev/null || true
             # ⚠️ --console-pty ŞART: Swift tuzağının mesajı ("Fatal error: …")
             # yalnız uygulamanın standart çıktısında görünüyor.
-            timeout 45 xcrun simctl launch --console-pty "$UDID" \
+            # ⚠️ macOS'ta `timeout` YOK (coreutils gelmiyor) — ilk denemede
+            # "timeout: command not found" verip uygulama hiç açılmadı.
+            # Arka plana atıp elle öldürüyoruz.
+            xcrun simctl launch --console-pty "$UDID" \
               com.littlelightgame.app -AppleLanguages "($1)" -AppleLocale "$1" \
-              > konsol_$1.txt 2>&1 || true
+              > konsol_$1.txt 2>&1 &
+            KPID=$!
+            sleep 40
+            kill $KPID 2>/dev/null || true
             echo "----- konsol (son 60) -----"
             tail -60 konsol_$1.txt || true
             echo "----- FATAL / CRASH satirlari -----"
