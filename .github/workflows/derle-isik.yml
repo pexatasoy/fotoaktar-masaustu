@@ -247,6 +247,10 @@ jobs:
   # denenmemişti — çökmenin saklandığı boşluk tam orasıydı.
   ipad-cokme:
     runs-on: macos-26
+    # 🚨 SERT SINIR. Bir `simctl` komutu (silinmiş cihazın açılışı) sonsuza
+    # kadar asılı kaldı ve iş 26 dakika tek adımda bekledi. Artık hem her
+    # komutun hem de işin kendisinin süresi sınırlı.
+    timeout-minutes: 30
     steps:
       - name: Kaynağı çek
         run: |
@@ -274,27 +278,30 @@ jobs:
           echo "uygulama: $UYG"
           mkdir -p tani
 
+          # ⚠️ macOS'ta `timeout` yok; perl'in alarm'ı aynı işi görüyor.
+          sinirli () { S=$1; shift; perl -e 'alarm shift; exec @ARGV' "$S" "$@"; }
+
           dene () {   # dene <cihaz adı> <dil>
             echo "════════ $1 · $2 ════════"
             UDID=$(xcrun simctl list devices available | grep -m1 "$1 (" | grep -oE "[0-9A-F-]{36}")
             if [ -z "$UDID" ]; then echo "cihaz yok: $1"; return 0; fi
             ETIKET=$(echo "$1$2" | tr -cd '[:alnum:]')
-            xcrun simctl shutdown "$UDID" >/dev/null 2>&1 || true
-            xcrun simctl erase "$UDID" >/dev/null 2>&1 || true
-            xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
-            xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
+            sinirli 60 xcrun simctl shutdown "$UDID" >/dev/null 2>&1 || true
+            sinirli 90 xcrun simctl erase "$UDID" >/dev/null 2>&1 || true
+            sinirli 90 xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
+            sinirli 180 xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
             # ⚠️ bootstatus "hazır" dese de SpringBoard kurulum bildirimlerini
             # bitirmemiş olabiliyor: silinmiş cihazda ilk `launch` hiç
             # BAŞLAMADI ve bu "çöktü" diye okundu. Hem bekle hem doğrula.
             sleep 12
-            xcrun simctl install "$UDID" "$UYG"
+            sinirli 120 xcrun simctl install "$UDID" "$UYG" || { echo "⚠️ DUZENEK: kurulum zaman asimi"; return 0; }
             sleep 4
 
             # ⚠️ Başlatma PID döndürmüyorsa uygulama HİÇ AÇILMAMIŞTIR —
             # bu çökme değil, düzenek arızası. Üç kez dene, açılmazsa söyle.
             PID=""
             for d in 1 2 3; do
-              C=$(xcrun simctl launch "$UDID" com.littlelightgame.app \
+              C=$(sinirli 60 xcrun simctl launch "$UDID" com.littlelightgame.app \
                    -AppleLanguages "($2)" -AppleLocale "$2" 2>&1) || true
               PID=$(echo "$C" | grep -oE "[0-9]+$" | tail -1)
               [ -n "$PID" ] && break
@@ -308,7 +315,7 @@ jobs:
             # listesinde "-" PID'le kalıyor. Satırın KENDİSİNİ oku:
             #   "<pid>  <durum>  UIKitApplication:…"  → ayakta
             #   "-      <sinyal> UIKitApplication:…"  → ölmüş (-5 = SIGTRAP)
-            SATIR=$(xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep "UIKitApplication:com.littlelightgame.app" || true)
+            SATIR=$(sinirli 30 xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep "UIKitApplication:com.littlelightgame.app" || true)
             echo "launchctl: [$SATIR]"
             ILK=$(echo "$SATIR" | awk '{print $1}')
             if [ "$ILK" = "$PID" ]; then echo "SONUC: AYAKTA"
