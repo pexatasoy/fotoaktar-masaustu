@@ -143,6 +143,20 @@ jobs:
             --apiIssuer ${{ secrets.ASC_ISSUER_ID }}
           echo "✅ yüklendi — App Store Connect'te işlenmesi birkaç dakika sürer"
 
+      # 🚨 SEMBOLLERİ SAKLA. Apple derleme 2'yi iPad'de "açılışta çöktü"
+      # diye reddetti ve çökme raporunu gönderdi — ama rapordaki adresleri
+      # fonksiyon adına çevirecek dSYM hiç saklanmamıştı; arşiv işin sonunda
+      # siliniyordu. Rapor okunamadı. Artık her derlemenin dSYM'i derleme
+      # numarasıyla duruyor.
+      - name: Sembolleri (dSYM) sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsym-${{ github.run_number }}
+          path: ${{ runner.temp }}/isik.xcarchive/dSYMs/
+          retention-days: 90
+          if-no-files-found: warn
+
       - name: Günlükleri sakla
         if: always()
         uses: actions/upload-artifact@v4
