@@ -261,8 +261,11 @@ jobs:
         run: xcodegen generate
       - name: Simülatör derlemesi
         run: |
+          # 🚨 RELEASE. Apple'ın açtığı derleme Release (optimizasyonlu);
+          # CI bugüne kadar HEP Debug derliyordu, yani Apple'ın çalıştırdığı
+          # ikili hiç denenmemişti.
           xcodebuild -project isik.xcodeproj -scheme isik \
-            -configuration Debug -sdk iphonesimulator \
+            -configuration Release -sdk iphonesimulator \
             -derivedDataPath sim \
             CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -quiet build
       - name: iPad'de aç ve çökmeyi yakala
@@ -276,68 +279,60 @@ jobs:
             UDID=$(xcrun simctl list devices available | grep -m1 "$1 (" | grep -oE "[0-9A-F-]{36}")
             if [ -z "$UDID" ]; then echo "cihaz yok: $1"; return 0; fi
             ETIKET=$(echo "$1$2" | tr -cd '[:alnum:]')
-            # 🚨 HER DENEMEDEN ÖNCE SİL. İlk kurguda aynı cihaza arka arkaya
-            # kuruluyordu: ikinci deneme artık TEMİZ KURULUM değildi (ilk
-            # açılışta yazılan ayarlar duruyordu) ve "Türkçe sağlam" sonucu
-            # yanıltıcı çıktı. Apple her zaman temiz kurulumla açıyor.
             xcrun simctl shutdown "$UDID" >/dev/null 2>&1 || true
             xcrun simctl erase "$UDID" >/dev/null 2>&1 || true
             xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
             xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
+            # ⚠️ bootstatus "hazır" dese de SpringBoard kurulum bildirimlerini
+            # bitirmemiş olabiliyor: silinmiş cihazda ilk `launch` hiç
+            # BAŞLAMADI ve bu "çöktü" diye okundu. Hem bekle hem doğrula.
+            sleep 12
             xcrun simctl install "$UDID" "$UYG"
-            rm -rf ~/Library/Logs/DiagnosticReports/* || true
+            sleep 4
 
-            xcrun simctl launch --console-pty "$UDID" com.littlelightgame.app \
-              -AppleLanguages "($2)" -AppleLocale "$2" > tani/konsol_$ETIKET.txt 2>&1 &
-            KPID=$!
-            sleep 35
+            # ⚠️ Başlatma PID döndürmüyorsa uygulama HİÇ AÇILMAMIŞTIR —
+            # bu çökme değil, düzenek arızası. Üç kez dene, açılmazsa söyle.
+            PID=""
+            for d in 1 2 3; do
+              C=$(xcrun simctl launch "$UDID" com.littlelightgame.app \
+                   -AppleLanguages "($2)" -AppleLocale "$2" 2>&1) || true
+              PID=$(echo "$C" | grep -oE "[0-9]+$" | tail -1)
+              [ -n "$PID" ] && break
+              echo "baslatma denemesi $d basarisiz: $C"; sleep 6
+            done
+            if [ -z "$PID" ]; then echo "⚠️ DUZENEK: uygulama hic baslatilamadi (cokme DEGIL)"; return 0; fi
+            echo "baslatildi, PID $PID"
+            sleep 30
 
-            # 🚨 SIRA ÖNEMLİ: önce bak, SONRA öldür. İlk denemede ekran
-            # görüntüsü kill'den SONRA alınıyordu ve ana ekran çıkıyordu —
-            # çökmeyi ben yaratmış olabilirdim, ölçüm işe yaramazdı.
-            echo "----- surec ayakta mi -----"
-            if xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep -q littlelightgame; then
-              echo "AYAKTA"
-            else
-              echo "🚨 SUREC YOK"
-            fi
+            # 🚨 `grep -q` YANILTIYORDU: sonlanan uygulama da launchctl
+            # listesinde "-" PID'le kalıyor. Satırın KENDİSİNİ oku:
+            #   "<pid>  <durum>  UIKitApplication:…"  → ayakta
+            #   "-      <sinyal> UIKitApplication:…"  → ölmüş (-5 = SIGTRAP)
+            SATIR=$(xcrun simctl spawn "$UDID" launchctl list 2>/dev/null | grep "UIKitApplication:com.littlelightgame.app" || true)
+            echo "launchctl: [$SATIR]"
+            ILK=$(echo "$SATIR" | awk '{print $1}')
+            if [ "$ILK" = "$PID" ]; then echo "SONUC: AYAKTA"
+            elif [ -z "$SATIR" ]; then echo "SONUC: 🚨 LISTEDE YOK"
+            else echo "SONUC: 🚨 OLMUS (durum: $(echo "$SATIR" | awk '{print $2}'))"; fi
+
             xcrun simctl io "$UDID" screenshot "tani/$ETIKET.png" >/dev/null 2>&1 || true
-
-            kill $KPID 2>/dev/null || true
-            echo "----- konsol -----"
-            cat tani/konsol_$ETIKET.txt || true
             echo "----- cokme raporlari -----"
             BULDU=0
-            for f in $(find ~/Library/Logs/DiagnosticReports -type f 2>/dev/null); do
-              case "$f" in *isik*|*Little*) ;; *) continue;; esac
-              BULDU=1; echo "### $f"; head -70 "$f"; cp "$f" tani/ 2>/dev/null || true
+            for g in $(find ~/Library/Logs/DiagnosticReports -type f -newer "$UYG" 2>/dev/null); do
+              BULDU=1; echo "### $g"; head -90 "$g"; cp "$g" tani/ 2>/dev/null || true
             done
-            # ⚠️ Simülatör raporu cihazın kendi klasörüne de düşebiliyor.
-            # ⚠️ Bu klasörde DİZİN de var (CrashReporter/Assistant) — `head`
-            # dizinde hata verip bütün adımı düşürdü. Yalnız düz dosya.
-            for f in $(find ~/Library/Developer/CoreSimulator/Devices/$UDID/data/Library/Logs/CrashReporter -type f 2>/dev/null); do
-              BULDU=1; echo "### $f"; head -70 "$f"; cp "$f" tani/ 2>/dev/null || true
-            done
-            [ "$BULDU" = 0 ] && echo "(cokme raporu yok)"
-            # ⚠️ Swift tuzağının mesajı konsola düşmeyebiliyor; sistem
-            # günlüğünde "Fatal error" ya da imzalı çökme kaydı duruyor.
-            echo "----- sistem gunlugu -----"
-            xcrun simctl spawn "$UDID" log show --last 3m \
-              --predicate 'process == "isik" OR eventMessage CONTAINS "isik"' \
-              --style compact 2>/dev/null | tail -60 || echo "(gunluk alinamadi)"
-            echo "----- son .ips dosyalari -----"
-            find ~/Library/Logs ~/Library/Developer/CoreSimulator/Devices/$UDID/data/Library/Logs \
-              -name "*.ips" -type f 2>/dev/null | head -10 | while read g; do
-              echo "### $g"; head -80 "$g"; cp "$g" tani/ 2>/dev/null || true
-            done
+            [ "$BULDU" = 0 ] && echo "(yok)"
             xcrun simctl terminate "$UDID" com.littlelightgame.app 2>/dev/null || true
           }
 
-          # Apple'ın kullandığı cihaz Air 11", bizim çalışan karemiz Pro 13".
-          dene "iPad Air 11-inch" en
-          dene "iPad Air 11-inch" tr
+          # Apple'ın kullandığı cihaz Air 11". Her kombinasyon iki kez:
+          # zamanlama yarışı varsa tek denemede görünmeyebilir.
+          for n in 1 2; do
+            dene "iPad Air 11-inch" en
+            dene "iPad Air 11-inch" tr
+          done
           dene "iPad Pro 13-inch" en
-          dene "iPad Pro 13-inch" tr
+          dene "iPhone 17 Pro Max" en
 
       - name: Tanıyı sakla
         if: always()
