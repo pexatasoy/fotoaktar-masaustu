@@ -25,11 +25,17 @@ jobs:
       - name: Xcode projesini üret
         run: xcodegen generate
       # ⚠️ DEBUG ŞART: demo kipi `#if DEBUG` içinde, Release'e girmiyor.
+      # 🚨 AMA OPTİMİZASYON AÇIK (-O): optimizasyonsuz derlemede çözücü
+      # 40. bölümde hamle başına 3,2 sn sürdü ve Canvas animasyonları da
+      # gerçek oyundan ağır akıyor — video oyunu olduğundan kötü gösterirdi.
+      # DEBUG koşul bayrağı `SWIFT_ACTIVE_COMPILATION_CONDITIONS`ten geliyor,
+      # optimizasyon seviyesinden bağımsız.
       - name: Simülatör derlemesi (Debug)
         run: |
           xcodebuild -project isik.xcodeproj -scheme isik \
             -configuration Debug -sdk iphonesimulator \
             -derivedDataPath sim \
+            SWIFT_OPTIMIZATION_LEVEL=-O \
             CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO -quiet build
       - name: Kaydet
         run: |
@@ -56,30 +62,38 @@ jobs:
             ETIKET="bolum$1_$2"
             echo "════ $ETIKET ════"
             sinirli 20 xcrun simctl terminate "$UDID" com.littlelightgame.app 2>/dev/null || true
-            sleep 2
-            C=$(sinirli 60 xcrun simctl launch "$UDID" com.littlelightgame.app \
-                -sahne "demo:$1" -AppleLanguages "($2)" -AppleLocale "$2" 2>&1) || true
-            echo "baslatma: $C"
-            # ⚠️ Tahta 1 sn sonra açılıyor; kaydı onun ardından başlat ki
-            # videonun başı ana ekran olmasın. İlk hamle 2,4 sn'de.
-            sleep 1.6
+            sleep 3
+            # ⚠️ Kayıt ÖNCE başlıyor, uygulama sonra açılıyor: baştaki
+            # fazlalık sunucuda kurguda kesiliyor. Tersi sırada ilk
+            # hamleler kaydedici ısınırken kaçıyordu.
             xcrun simctl io "$UDID" recordVideo --codec=h264 --force "klipler/$ETIKET.mp4" &
             KP=$!
-            sleep "$3"
-            # ⚠️ SIGINT ŞART: öldürülen kayıt dosyayı kapatmıyor, video bozuk kalıyor.
-            kill -INT $KP 2>/dev/null || true
-            sinirli 30 wait $KP 2>/dev/null || true
             sleep 2
+            # --stdout: uygulamanın "DEMO:" satırları. --console-pty
+            # kullanılmıyor, onu öldürmek uygulamayı da kapatabiliyor.
+            sinirli 60 xcrun simctl launch --stdout="$PWD/klipler/$ETIKET.log" \
+              --stderr="$PWD/klipler/$ETIKET.log" "$UDID" com.littlelightgame.app \
+              -sahne "demo:$1" -AppleLanguages "($2)" -AppleLocale "$2" || echo "⚠️ baslatilamadi"
+            sleep "$3"
+            # ⚠️ SIGINT ŞART: öldürülen kayıt dosyayı kapatmıyor.
+            # ⚠️ `wait` kabuk komutu — perl üzerinden (sinirli) ÇALIŞMIYOR;
+            # ilk sürümde bu yüzden bir sonraki klibe dosya yazılmadan
+            # geçildi. Süre sınırı ayrı bir bekçiyle.
+            kill -INT $KP 2>/dev/null || true
+            ( sleep 40; kill -9 $KP 2>/dev/null ) & BK=$!
+            wait $KP 2>/dev/null || true
+            kill $BK 2>/dev/null || true
             ls -la "klipler/$ETIKET.mp4" || echo "⚠️ klip yok"
+            echo "--- uygulama gunlugu ---"; cat "klipler/$ETIKET.log" 2>/dev/null || true
           }
 
-          # Süre = 2,4 sn bekleme + hamle×0,95 + ~6 sn kutlama.
-          kaydet 40 tr 16
-          kaydet 24 tr 16
-          kaydet 8  tr 15
-          kaydet 40 en 16
-          kaydet 24 en 16
-          kaydet 8  en 15
+          # Pencere geniş: açılış + hesaplama + 8 hamle×0,95 + kutlama.
+          kaydet 40 tr 24
+          kaydet 24 tr 22
+          kaydet 8  tr 21
+          kaydet 40 en 24
+          kaydet 24 en 22
+          kaydet 8  en 21
       - name: Klipleri sakla
         if: always()
         uses: actions/upload-artifact@v4
