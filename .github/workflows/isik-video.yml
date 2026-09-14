@@ -61,8 +61,15 @@ jobs:
           kaydet () {   # kaydet <sıra> <dil> <saniye>
             ETIKET="bolum$1_$2"
             echo "════ $ETIKET ════"
+            # 🚨 HER KLİPTE KALDIR + TEMİZ KUR. Yalnız `terminate` + `launch`
+            # yetmedi: 24. bölümün klibinin tamamında 40. bölümün kazanma kartı
+            # durdu — uygulama yeni bayrakla açılmamış, eski oturum ekranda
+            # kalmıştı. Temiz kurulum ayrıca önceki kliplerden biriken ilerlemeyi
+            # de siliyor ("Yıldırım açıldı" bildirimi kareye düşüyordu).
             sinirli 20 xcrun simctl terminate "$UDID" com.littlelightgame.app 2>/dev/null || true
-            sleep 3
+            sinirli 60 xcrun simctl uninstall "$UDID" com.littlelightgame.app 2>/dev/null || true
+            sinirli 120 xcrun simctl install "$UDID" "$UYG" || { echo "⚠️ kurulamadi"; return 0; }
+            sleep 4
             # ⚠️ Kayıt ÖNCE başlıyor, uygulama sonra açılıyor: baştaki
             # fazlalık sunucuda kurguda kesiliyor. Tersi sırada ilk
             # hamleler kaydedici ısınırken kaçıyordu.
