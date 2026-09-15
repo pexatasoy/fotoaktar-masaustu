@@ -1,0 +1,20 @@
+name: Seyir - tvOS engine compatibility
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-engine:
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile and run isolated native engine check
+        run: |
+          python3 .seyir-probe/probe.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: seyir-engine-evidence
+          path: evidence/
+          retention-days: 7
