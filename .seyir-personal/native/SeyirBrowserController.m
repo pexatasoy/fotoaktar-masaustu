@@ -7,12 +7,31 @@
 static UIColor *SeyirBackground(void) { return [UIColor colorWithWhite:0.055 alpha:1]; }
 static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:1]; }
 
-@interface SeyirPlayerController : AVPlayerViewController
+// Containment keeps the interactive game above the player, outside AVKit's
+// contentOverlayView, which is intended for noninteractive decorations.
+@interface SeyirPlayerController : UIViewController
 @property(nonatomic,weak) UIView *gameOverlay;
+@property(nonatomic,strong) AVPlayerViewController *playerController;
+@property(nonatomic,strong) AVPlayer *player;
+@property(nonatomic,readonly) UIView *contentOverlayView;
 @end
 @implementation SeyirPlayerController
+- (void)viewDidLoad {
+    [super viewDidLoad];self.view.backgroundColor=UIColor.blackColor;
+    self.playerController=[AVPlayerViewController new];self.playerController.player=self.player;
+    [self addChildViewController:self.playerController];
+    UIView *video=self.playerController.view;video.translatesAutoresizingMaskIntoConstraints=NO;[self.view addSubview:video];
+    [NSLayoutConstraint activateConstraints:@[[video.topAnchor constraintEqualToAnchor:self.view.topAnchor],[video.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],[video.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],[video.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor]]];
+    [self.playerController didMoveToParentViewController:self];
+}
+- (UIView *)contentOverlayView { return self.view; }
+- (void)setPlayer:(AVPlayer *)player { _player=player;self.playerController.player=player; }
 - (NSArray<id<UIFocusEnvironment>> *)preferredFocusEnvironments {
-    return self.gameOverlay.window ? @[self.gameOverlay] : [super preferredFocusEnvironments];
+    return self.gameOverlay.window ? @[self.gameOverlay] : self.playerController ? @[self.playerController] : [super preferredFocusEnvironments];
+}
+- (void)pressesBegan:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event {
+    for(UIPress *press in presses)if(press.type==UIPressTypeMenu && !self.gameOverlay){[self.player pause];[self dismissViewControllerAnimated:YES completion:nil];return;}
+    [super pressesBegan:presses withEvent:event];
 }
 @end
 

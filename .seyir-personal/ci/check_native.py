@@ -49,6 +49,7 @@ for mode in ['--home','--test-controls','--test-google','--test-youtube','--test
         assert all(session.get(key) for key in ['restored','residentLimit','memoryRelease','lastTabRecovery']), session
     elif mode!='--home' and 'SEYIR_TEST result=' not in text:raise SystemExit('Missing page-test completion: '+mode)
     if mode.startswith('--test-tennis') and 'tennis attached=1' not in text:raise SystemExit('Tennis overlay is not attached')
+    if mode.startswith('--test-tennis') and 'tennis focused=1' not in text:raise SystemExit('Tennis overlay did not receive remote focus')
     if mode in ['--test-video','--test-tennis','--test-tennis-court']:
         media=json.loads(re.search(r'SEYIR_TEST nativeMedia=(\{[^\n]+\})',text).group(1))
         assert media['status']==1 and media['time']>0 and not media['error'], media

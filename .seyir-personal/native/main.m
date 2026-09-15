@@ -25,6 +25,10 @@
             [tennis swing];
             NSLog(@"SEYIR_TEST tennis attached=%d court=%d",tennis.window!=nil,tennis.courtBackground);
         });
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,10*NSEC_PER_SEC),dispatch_get_main_queue(),^{
+            SeyirTennisView *tennis=[self.browser valueForKey:@"tennis"];
+            NSLog(@"SEYIR_TEST tennis focused=%d",tennis.focused);
+        });
     }
     if([args containsObject:@"--test-controls"]) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,2*NSEC_PER_SEC),dispatch_get_main_queue(),^{
