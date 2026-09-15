@@ -1,5 +1,6 @@
 #import "SeyirBrowserController.h"
 #import "SeyirWebKitEngine.h"
+#import "SeyirTennisView.h"
 
 @interface SeyirAppDelegate : UIResponder <UIApplicationDelegate>
 @property(nonatomic,strong) UIWindow *window;
@@ -16,6 +17,15 @@
     [self.window makeKeyAndVisible];
 #if SEYIR_DIAGNOSTICS
     NSArray *args=NSProcessInfo.processInfo.arguments;
+    if([args containsObject:@"--test-tennis"] || [args containsObject:@"--test-tennis-court"]) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,5*NSEC_PER_SEC),dispatch_get_main_queue(),^{
+            [self.browser performSelector:NSSelectorFromString(@"showTennis")];
+            SeyirTennisView *tennis=[self.browser valueForKey:@"tennis"];
+            tennis.courtBackground=[args containsObject:@"--test-tennis-court"];
+            [tennis swing];
+            NSLog(@"SEYIR_TEST tennis attached=%d court=%d",tennis.window!=nil,tennis.courtBackground);
+        });
+    }
     if([args containsObject:@"--test-controls"]) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,2*NSEC_PER_SEC),dispatch_get_main_queue(),^{
             [self.browser prepareDiagnosticPage];
@@ -41,6 +51,7 @@
     if([args containsObject:@"--test-google"]) url=@"https://www.google.com/search?q=Apple+TV";
     if([args containsObject:@"--test-youtube"]) url=@"https://www.youtube.com/watch?v=aqz-KE-bpKQ";
     if([args containsObject:@"--test-video"]) url=@"https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
+    if([args containsObject:@"--test-tennis"] || [args containsObject:@"--test-tennis-court"]) url=@"https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4";
     if(url) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,2*NSEC_PER_SEC),dispatch_get_main_queue(),^{
             [self.browser performSelector:NSSelectorFromString(@"openURL:") withObject:[NSURL URLWithString:url]];

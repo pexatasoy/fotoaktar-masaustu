@@ -28,7 +28,7 @@ if device['state']!='Booted':run(['xcrun','simctl','boot',uid])
 run(['xcrun','simctl','bootstatus',uid,'-b'],timeout=300)
 app=OUT/'appletvsimulator/Build/Products/Debug-appletvsimulator/Seyir.app'
 run(['xcrun','simctl','install',uid,str(app)])
-for mode in ['--home','--test-controls','--test-google','--test-youtube','--test-video']:
+for mode in ['--home','--test-controls','--test-google','--test-youtube','--test-video','--test-tennis','--test-tennis-court']:
     with (OUT/(mode[2:]+'.log')).open('w') as log:
         proc=subprocess.Popen(['xcrun','simctl','launch','--terminate-running-process','--console',uid,'com.chainmedia.seyir.personal',mode],stdout=log,stderr=subprocess.STDOUT)
         try:proc.wait(timeout=35 if mode!='--home' else 12)
@@ -42,4 +42,5 @@ for mode in ['--home','--test-controls','--test-google','--test-youtube','--test
         for marker in ['"text":"tenis & maç"','"hits":1','"historyExcluded":true','"restorationExcluded":true']:
             if marker not in text:raise SystemExit('Failed interaction/privacy assertion: '+marker)
     elif mode!='--home' and 'SEYIR_TEST result=' not in text:raise SystemExit('Missing page-test completion: '+mode)
+    if mode.startswith('--test-tennis') and 'tennis attached=1' not in text:raise SystemExit('Tennis overlay is not attached')
 print('Compilation and page probes completed. Inspect media results before claiming playback.',flush=True)

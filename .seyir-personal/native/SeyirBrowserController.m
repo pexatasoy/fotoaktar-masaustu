@@ -2,6 +2,7 @@
 #import "SeyirAddress.h"
 #import "SeyirLibrary.h"
 #import <AVKit/AVKit.h>
+#import "SeyirTennisView.h"
 
 static UIColor *SeyirBackground(void) { return [UIColor colorWithWhite:0.055 alpha:1]; }
 static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:1]; }
@@ -42,6 +43,7 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
 @property(nonatomic) NSTimeInterval lastPointerUpdate;
 @property(nonatomic,strong) NSMutableArray<SeyirTab *> *tabs;
 @property(nonatomic) NSUInteger tabIndex;
+@property(nonatomic,strong) SeyirTennisView *tennis;
 @end
 
 @implementation SeyirBrowserController
@@ -196,6 +198,7 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
     self.focusToolbar=NO;[self setNeedsFocusUpdate];
 }
 - (NSArray<id<UIFocusEnvironment>> *)preferredFocusEnvironments {
+    if(self.tennis.window) return @[self.tennis];
     if (self.home && !self.home.hidden) return @[self.home];
     return self.focusToolbar ? @[self.address] : @[self.engine.contentView];
 }
@@ -265,7 +268,25 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
     [self.engine pauseMedia];[self setPageLoading:NO];
     self.mediaController=[AVPlayerViewController new];
     self.mediaController.player=[AVPlayer playerWithURL:url];
-    [self presentViewController:self.mediaController animated:YES completion:^{[self.mediaController.player play];}];
+    [self presentViewController:self.mediaController animated:YES completion:^{[self.mediaController.player play];if(self.tennis)[self attachTennis];}];
+}
+- (void)attachTennis {
+    UIView *host=self.mediaController.presentingViewController ? self.mediaController.contentOverlayView : self.view;
+    [self.tennis removeFromSuperview];self.tennis.translatesAutoresizingMaskIntoConstraints=NO;
+    [host addSubview:self.tennis];
+    [NSLayoutConstraint activateConstraints:@[[self.tennis.leadingAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.leadingAnchor constant:18],[self.tennis.centerYAnchor constraintEqualToAnchor:host.centerYAnchor],[self.tennis.widthAnchor constraintEqualToConstant:330],[self.tennis.heightAnchor constraintEqualToConstant:530]]];
+    [host setNeedsFocusUpdate];[self setNeedsFocusUpdate];
+}
+- (void)showTennis {
+    if(self.tennis){[self.tennis removeFromSuperview];self.tennis=nil;[self setNeedsFocusUpdate];return;}
+    self.tennis=[[SeyirTennisView alloc] initWithFrame:CGRectZero];
+    __weak typeof(self) weakSelf=self;
+    self.tennis.onClose=^{[weakSelf.tennis removeFromSuperview];weakSelf.tennis=nil;[weakSelf setNeedsFocusUpdate];};
+    [self attachTennis];
+}
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    if(self.mediaController && !self.mediaController.presentingViewController){[self.mediaController.player pause];self.mediaController=nil;if(self.tennis)[self attachTennis];}
 }
 - (NSDictionary *)mediaDiagnostics {
     AVPlayer *player=self.mediaController.player;
@@ -400,8 +421,8 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
 - (void)showOptions {
     UIAlertController *list=[UIAlertController alertControllerWithTitle:@"Seçenekler" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
     __weak typeof(self) weakSelf=self;
-    NSDictionary *actions=@{@"Sayfada bul":NSStringFromSelector(@selector(findOnPage)),@"Yakınlaştır":NSStringFromSelector(@selector(showZoom)),@"Favoriler":NSStringFromSelector(@selector(showFavorites)),@"Geçmiş":NSStringFromSelector(@selector(showHistory)),@"Site verilerini temizle":NSStringFromSelector(@selector(confirmClearSiteData))};
-    for(NSString *title in @[@"Sayfada bul",@"Yakınlaştır",@"Favoriler",@"Geçmiş",@"Site verilerini temizle"]) [list addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction *action){
+    NSDictionary *actions=@{@"Mini tenis":NSStringFromSelector(@selector(showTennis)),@"Sayfada bul":NSStringFromSelector(@selector(findOnPage)),@"Yakınlaştır":NSStringFromSelector(@selector(showZoom)),@"Favoriler":NSStringFromSelector(@selector(showFavorites)),@"Geçmiş":NSStringFromSelector(@selector(showHistory)),@"Site verilerini temizle":NSStringFromSelector(@selector(confirmClearSiteData))};
+    for(NSString *title in @[@"Mini tenis",@"Sayfada bul",@"Yakınlaştır",@"Favoriler",@"Geçmiş",@"Site verilerini temizle"]) [list addAction:[UIAlertAction actionWithTitle:title style:UIAlertActionStyleDefault handler:^(UIAlertAction *action){
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,.4*NSEC_PER_SEC),dispatch_get_main_queue(),^{
             SEL selector=NSSelectorFromString(actions[title]);
             IMP implementation=[weakSelf methodForSelector:selector];
