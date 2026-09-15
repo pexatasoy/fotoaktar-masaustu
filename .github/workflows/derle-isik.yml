@@ -149,15 +149,25 @@ jobs:
           # (eskiden seçili temanın rengini gösteriyordu). Sonra geri alınıyor.
           cek "$TEL" tr "-sahne tarz:komur -perde dukkan" tel_dukkan_komur
           cek "$TEL" tr "-sahne tarz:dunya" tel_tarz_geri
-          # 🪞 AYNANIN ARDI — karanlık kip. Gizli bölümler paketlenmeden önce
-          # `-karanlik` ile zorlanıyor. Bakılacak: her koyu yüzeyin üstünde açık
-          # yazı var mı, ışık karolardan ayrışıyor mu, hilal ay, obsidyen ayna.
-          cek "$TEL" tr "-karanlik"                    tel_k_menu
-          cek "$TEL" tr "-karanlik -sahne bolum:33"    tel_k_bolum_d3
-          cek "$TEL" tr "-karanlik -sahne bolum:93"    tel_k_bolum_d7
-          cek "$TEL" tr "-karanlik -sahne liste"       tel_k_liste
-          cek "$TEL" tr "-karanlik -perde dukkan"      tel_k_dukkan
-          cek "$TEL" tr "-karanlik -sahne demo:40"     tel_k_kazanma
+          # 🪞 AYNANIN ARDI — ödül teması SEÇİLİ (oyuncunun gerçek durumu,
+          # gizli dünyanın içinde değil). ⚠️ Seçim kalıcı: blok sonunda geri alınıyor.
+          # Bakılacak: her koyu yüzeyin üstünde açık yazı, altta kahverengi boşluk yok.
+          cek "$TEL" tr "-tarz ayna"                       tel_k_menu
+          cek "$TEL" tr "-tarz ayna -manzara ayna"         tel_k_menu_ayna
+          cek "$TEL" tr "-tarz ayna -sahne bolum:33"       tel_k_bolum_d3
+          cek "$TEL" tr "-tarz ayna -sahne liste"          tel_k_liste
+          cek "$TEL" tr "-tarz ayna -sahne gunluk"         tel_k_gunluk
+          cek "$TEL" tr "-tarz ayna -perde dukkan"         tel_k_dukkan
+          cek "$TEL" tr "-tarz ayna -perde ayarlar"        tel_k_ayarlar
+          cek "$TEL" tr "-tarz ayna -perde profil"         tel_k_profil
+          cek "$TEL" tr "-tarz ayna -perde sandik"         tel_k_sandik
+          cek "$TEL" tr "-tarz ayna -perde modlar"         tel_k_modlar
+          cek "$TEL" tr "-tarz ayna -perde arkadaslar"     tel_k_arkadaslar
+          cek "$TEL" tr "-tarz ayna -sahne demo:40"        tel_k_kazanma
+          # Gizli dünyanın içi
+          cek "$TEL" tr "-sahne aynaliste"                 tel_a_liste
+          cek "$TEL" tr "-sahne aynagiris"                 tel_a_giris
+          cek "$TEL" tr "-tarz dunya -manzara batim"       tel_tarz_geri2
           cek "$TEL" en "-perde dukkan"     tel_dukkan_en
           cek "$TEL" tr "-perde ayarlar"    tel_ayarlar_tr
           cek "$TEL" tr "-perde profil"     tel_profil_tr
