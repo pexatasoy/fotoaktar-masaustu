@@ -145,6 +145,10 @@ jobs:
           cek "$TEL" tr "-sahne gunluk"     tel_gunluk
           cek "$TEL" tr "-sahne kilit"      tel_kilit
           cek "$TEL" tr "-perde dukkan"     tel_dukkan_tr
+          # Kömür SEÇİLİYKEN dükkân: "Dünyanın Rengi" kartı turuncu kalmalı
+          # (eskiden seçili temanın rengini gösteriyordu). Sonra geri alınıyor.
+          cek "$TEL" tr "-sahne tarz:komur -perde dukkan" tel_dukkan_komur
+          cek "$TEL" tr "-sahne tarz:dunya" tel_tarz_geri
           cek "$TEL" en "-perde dukkan"     tel_dukkan_en
           cek "$TEL" tr "-perde ayarlar"    tel_ayarlar_tr
           cek "$TEL" tr "-perde profil"     tel_profil_tr
