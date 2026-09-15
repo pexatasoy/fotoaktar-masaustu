@@ -149,6 +149,15 @@ jobs:
           # (eskiden seçili temanın rengini gösteriyordu). Sonra geri alınıyor.
           cek "$TEL" tr "-sahne tarz:komur -perde dukkan" tel_dukkan_komur
           cek "$TEL" tr "-sahne tarz:dunya" tel_tarz_geri
+          # 🪞 AYNANIN ARDI — karanlık kip. Gizli bölümler paketlenmeden önce
+          # `-karanlik` ile zorlanıyor. Bakılacak: her koyu yüzeyin üstünde açık
+          # yazı var mı, ışık karolardan ayrışıyor mu, hilal ay, obsidyen ayna.
+          cek "$TEL" tr "-karanlik"                    tel_k_menu
+          cek "$TEL" tr "-karanlik -sahne bolum:33"    tel_k_bolum_d3
+          cek "$TEL" tr "-karanlik -sahne bolum:93"    tel_k_bolum_d7
+          cek "$TEL" tr "-karanlik -sahne liste"       tel_k_liste
+          cek "$TEL" tr "-karanlik -perde dukkan"      tel_k_dukkan
+          cek "$TEL" tr "-karanlik -sahne demo:40"     tel_k_kazanma
           cek "$TEL" en "-perde dukkan"     tel_dukkan_en
           cek "$TEL" tr "-perde ayarlar"    tel_ayarlar_tr
           cek "$TEL" tr "-perde profil"     tel_profil_tr
