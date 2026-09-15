@@ -91,7 +91,8 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
     self.view.backgroundColor=SeyirBackground();
     self.toolbar=[[UIStackView alloc] init];self.toolbar.axis=UILayoutConstraintAxisHorizontal;
     self.toolbar.alignment=UIStackViewAlignmentCenter;self.toolbar.spacing=14;
-    self.toolbar.layoutMargins=UIEdgeInsetsMake(12,54,12,54);self.toolbar.layoutMarginsRelativeArrangement=YES;
+    self.toolbar.insetsLayoutMarginsFromSafeArea=NO;
+    self.toolbar.layoutMargins=UIEdgeInsetsMake(54,64,18,64);self.toolbar.layoutMarginsRelativeArrangement=YES;
     self.toolbar.backgroundColor=SeyirBackground();
     self.backButton=[self button:@"Geri" symbol:@"chevron.backward" action:@selector(goBack)];
     self.backButton.enabled=NO;
@@ -114,8 +115,9 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
     UIButton *tabs=[self button:@"Sekmeler" symbol:@"square.on.square" action:@selector(showTabs)];
     UIButton *options=[self button:@"Seçenekler" symbol:@"ellipsis" action:@selector(showOptions)];
     for(UIButton *button in @[homeButton,self.backButton,self.forwardButton,self.reloadButton,self.starButton,full,self.cursorButton,tabs,options]) {
-        UIButtonConfiguration *config=button.configuration;config.title=nil;button.configuration=config;
+        UIButtonConfiguration *config=button.configuration;config.title=nil;config.contentInsets=NSDirectionalEdgeInsetsMake(10,10,10,10);button.configuration=config;
         [button.widthAnchor constraintEqualToConstant:76].active=YES;
+        [button.heightAnchor constraintEqualToConstant:64].active=YES;
     }
     for(UIView *item in @[homeButton,self.backButton,self.forwardButton,self.address,self.spinner,self.reloadButton,self.starButton,self.cursorButton,full,tabs,options]) [self.toolbar addArrangedSubview:item];
     UIView *content=[UIView new];self.engineHost=content;content.translatesAutoresizingMaskIntoConstraints=NO;
@@ -123,7 +125,7 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
     pan.allowedTouchTypes=@[@(UITouchTypeIndirect)];[content addGestureRecognizer:pan];
     self.toolbar.translatesAutoresizingMaskIntoConstraints=NO;
     [self.view addSubview:content];[self.view addSubview:self.toolbar];
-    self.toolbarHeight=[self.toolbar.heightAnchor constraintEqualToConstant:108];
+    self.toolbarHeight=[self.toolbar.heightAnchor constraintEqualToConstant:156];
     [NSLayoutConstraint activateConstraints:@[
         [self.toolbar.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [self.toolbar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -243,7 +245,7 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
     self.reloadButton.accessibilityLabel=loading ? @"Durdur" : @"Yenile";
 }
 - (void)setPageFullscreen:(BOOL)fullscreen {
-    self.fullscreen=fullscreen;self.toolbar.hidden=fullscreen;self.toolbarHeight.constant=fullscreen ? 0 : 108;
+    self.fullscreen=fullscreen;self.toolbar.hidden=fullscreen;self.toolbarHeight.constant=fullscreen ? 0 : 156;
     [self.view layoutIfNeeded];
 }
 - (void)showPageError:(NSString *)message {
