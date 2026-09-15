@@ -27,19 +27,19 @@
 - (void)didMoveToWindow {
     [super didMoveToWindow];
     [self.clock invalidate];self.clock=nil;self.lastTime=0;
-    if(self.window){self.clock=[CADisplayLink displayLinkWithTarget:self selector:@selector(tick:)];self.clock.preferredFramesPerSecond=30;[self.clock addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];}
+    if(self.window){self.clock=[CADisplayLink displayLinkWithTarget:self selector:@selector(tick:)];self.clock.preferredFramesPerSecond=30;[self.clock addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];self.clock.paused=self.gamePaused || self.pointDelay<0;}
 }
 - (void)dealloc { [self.clock invalidate];[[NSNotificationCenter defaultCenter] removeObserver:self]; }
-- (void)suspendGame { self.gamePaused=YES;[self setNeedsDisplay]; }
+- (void)suspendGame { self.gamePaused=YES;self.clock.paused=YES;[self setNeedsDisplay]; }
 - (void)setCourtBackground:(BOOL)value { _courtBackground=value;[self setNeedsDisplay]; }
 - (void)moveBy:(CGFloat)delta { if(!self.gamePaused) self.playerX=MAX(.1,MIN(.9,self.playerX+delta));[self setNeedsDisplay]; }
 - (void)pan:(UIPanGestureRecognizer *)gesture { CGPoint p=[gesture translationInView:self];[self moveBy:p.x/MAX(1,self.bounds.size.width)];[gesture setTranslation:CGPointZero inView:self]; }
 - (void)swing {
     if(self.gamePaused){[self togglePause];return;}
-    if(self.pointDelay<0){self.pointDelay=0;self.ballX=self.playerX;self.ballY=.82;self.velocityY=-.49;self.velocityX=.13;self.notice=@"";}
+    if(self.pointDelay<0){self.pointDelay=0;self.ballX=self.playerX;self.ballY=.82;self.velocityY=-.49;self.velocityX=.13;self.notice=@"";self.lastTime=0;self.clock.paused=NO;}
     else self.swingTime=.28;
 }
-- (void)togglePause { self.gamePaused=!self.gamePaused;self.lastTime=0;[self setNeedsDisplay]; }
+- (void)togglePause { self.gamePaused=!self.gamePaused;self.lastTime=0;self.clock.paused=self.gamePaused || self.pointDelay<0;[self setNeedsDisplay]; }
 - (NSString *)score:(NSInteger)points other:(NSInteger)other {
     if(points>=3 && other>=3) return points==other ? @"40" : points>other ? @"AD" : @"40";
     return @[@"0",@"15",@"30",@"40"][MIN(3,points)];
@@ -59,7 +59,7 @@
     CGFloat dt=MIN(.05,clock.timestamp-self.lastTime);self.lastTime=clock.timestamp;
     if(self.gamePaused)return;
     self.swingTime=MAX(0,self.swingTime-dt);
-    if(self.pointDelay>0){self.pointDelay-=dt;if(self.pointDelay<=0){self.pointDelay=-1;self.notice=@"Servis için tıkla";self.ballX=self.playerX;self.ballY=.84;}[self setNeedsDisplay];return;}
+    if(self.pointDelay>0){self.pointDelay-=dt;if(self.pointDelay<=0){self.pointDelay=-1;self.notice=@"Servis için tıkla";self.ballX=self.playerX;self.ballY=.84;self.clock.paused=YES;}[self setNeedsDisplay];return;}
     if(self.pointDelay<0){self.ballX=self.playerX;[self setNeedsDisplay];return;}
     CGFloat target=MAX(.12,MIN(.88,self.ballX));
     self.opponentX+=MAX(-dt*.31,MIN(dt*.31,target-self.opponentX));

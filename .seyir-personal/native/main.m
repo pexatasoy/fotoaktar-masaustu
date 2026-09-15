@@ -46,6 +46,10 @@
             NSLog(@"SEYIR_TEST privacy=%@",[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
             [self.browser prepareDiagnosticPage];[self.browser performSelector:NSSelectorFromString(@"toggleCursor")];
         });
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,18*NSEC_PER_SEC),dispatch_get_main_queue(),^{
+            NSData *data=[NSJSONSerialization dataWithJSONObject:[self.browser sessionDiagnostics] options:0 error:nil];
+            NSLog(@"SEYIR_TEST session=%@",[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
+        });
     }
     NSString *url=nil;
     if([args containsObject:@"--test-google"]) url=@"https://www.google.com/search?q=Apple+TV";

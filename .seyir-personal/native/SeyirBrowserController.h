@@ -38,5 +38,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSDictionary *)mediaDiagnostics;
 - (void)prepareDiagnosticPage;
 - (NSDictionary *)privacyDiagnostics;
+- (NSDictionary *)sessionDiagnostics;
 @end
 NS_ASSUME_NONNULL_END

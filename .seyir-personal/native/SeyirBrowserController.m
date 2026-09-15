@@ -7,6 +7,15 @@
 static UIColor *SeyirBackground(void) { return [UIColor colorWithWhite:0.055 alpha:1]; }
 static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:1]; }
 
+@interface SeyirPlayerController : AVPlayerViewController
+@property(nonatomic,weak) UIView *gameOverlay;
+@end
+@implementation SeyirPlayerController
+- (NSArray<id<UIFocusEnvironment>> *)preferredFocusEnvironments {
+    return self.gameOverlay.window ? @[self.gameOverlay] : [super preferredFocusEnvironments];
+}
+@end
+
 @interface SeyirTab : NSObject
 @property(nonatomic,strong) id<SeyirBrowserEngine> engine;
 @property(nonatomic,strong) NSURL *url;
@@ -34,7 +43,7 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
 @property(nonatomic) BOOL loading;
 @property(nonatomic) BOOL fullscreen;
 @property(nonatomic) BOOL focusToolbar;
-@property(nonatomic,strong) AVPlayerViewController *mediaController;
+@property(nonatomic,strong) SeyirPlayerController *mediaController;
 @property(nonatomic,strong) UIView *engineHost;
 @property(nonatomic,strong) UIView *cursor;
 @property(nonatomic,strong) UIButton *cursorButton;
@@ -64,9 +73,12 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
             [_tabs addObject:restored];
         }
         engine.controller=self;
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(suspendPlayback) name:UIApplicationWillResignActiveNotification object:nil];
     }
     return self;
 }
+- (void)dealloc { [[NSNotificationCenter defaultCenter] removeObserver:self]; }
+- (void)suspendPlayback { [self.engine pauseMedia];[self.mediaController.player pause]; }
 - (UIButton *)button:(NSString *)title symbol:(NSString *)symbol action:(SEL)action {
     UIButton *button=[UIButton buttonWithType:UIButtonTypeSystem];
     UIButtonConfiguration *config=[UIButtonConfiguration plainButtonConfiguration];
@@ -268,7 +280,7 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
 - (void)playMediaURL:(NSURL *)url {
     if(self.presentedViewController || ![@[@"https",@"http"] containsObject:url.scheme.lowercaseString]) return;
     [self.engine pauseMedia];[self setPageLoading:NO];
-    self.mediaController=[AVPlayerViewController new];
+    self.mediaController=[SeyirPlayerController new];
     self.mediaController.player=[AVPlayer playerWithURL:url];
     [self presentViewController:self.mediaController animated:YES completion:^{[self.mediaController.player play];if(self.tennis)[self attachTennis];}];
 }
@@ -276,14 +288,15 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
     UIView *host=self.mediaController.presentingViewController ? self.mediaController.contentOverlayView : self.view;
     [self.tennis removeFromSuperview];self.tennis.translatesAutoresizingMaskIntoConstraints=NO;
     [host addSubview:self.tennis];
+    self.mediaController.gameOverlay=self.tennis;
     [NSLayoutConstraint activateConstraints:@[[self.tennis.leadingAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.leadingAnchor constant:18],[self.tennis.centerYAnchor constraintEqualToAnchor:host.centerYAnchor],[self.tennis.widthAnchor constraintEqualToConstant:330],[self.tennis.heightAnchor constraintEqualToConstant:530]]];
-    [host setNeedsFocusUpdate];[self setNeedsFocusUpdate];
+    [host setNeedsFocusUpdate];[self.mediaController setNeedsFocusUpdate];[self.mediaController updateFocusIfNeeded];[self setNeedsFocusUpdate];
 }
 - (void)showTennis {
     if(self.tennis){[self.tennis removeFromSuperview];self.tennis=nil;[self setNeedsFocusUpdate];return;}
     self.tennis=[[SeyirTennisView alloc] initWithFrame:CGRectZero];
     __weak typeof(self) weakSelf=self;
-    self.tennis.onClose=^{[weakSelf.tennis removeFromSuperview];weakSelf.tennis=nil;[weakSelf setNeedsFocusUpdate];};
+    self.tennis.onClose=^{[weakSelf.tennis removeFromSuperview];weakSelf.tennis=nil;weakSelf.mediaController.gameOverlay=nil;[weakSelf.mediaController setNeedsFocusUpdate];[weakSelf setNeedsFocusUpdate];};
     [self attachTennis];
 }
 - (void)viewDidAppear:(BOOL)animated {
@@ -307,6 +320,23 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
     for(NSDictionary *entry in [NSUserDefaults.standardUserDefaults arrayForKey:@"seyir.tabs"]) if([entry[@"url"] isEqualToString:privateURL.absoluteString]) privateRestoration=YES;
     [self closeCurrentTab];[self switchToTab:MIN(original,self.tabs.count-1)];
     return @{@"historyExcluded":@(!privateHistory),@"restorationExcluded":@(!privateRestoration)};
+}
+- (NSDictionary *)sessionDiagnostics {
+    // Exercise the same creation, persistence and eviction paths used by the UI.
+    for(NSUInteger i=0;i<3;i++) {
+        [self newTabPrivate:NO];
+        [self didNavigateToURL:[NSURL URLWithString:[NSString stringWithFormat:@"https://example.test/tab-%lu",(unsigned long)i]] title:@"Restoration test" canGoBack:NO];
+    }
+    NSUInteger resident=0;
+    for(SeyirTab *tab in self.tabs) if(tab.engine)resident++;
+    SeyirBrowserController *restored=[[SeyirBrowserController alloc] initWithEngine:[self.engine newEnginePrivate:NO]];
+    BOOL recovered=restored.tabs.count==4;
+    [self didReceiveMemoryWarning];
+    NSUInteger afterWarning=0;
+    for(SeyirTab *tab in self.tabs)if(tab.engine)afterWarning++;
+    while(self.tabs.count>1)[self closeCurrentTab];
+    [self closeCurrentTab];
+    return @{@"restored":@(recovered),@"residentLimit":@(resident<=2),@"memoryRelease":@(afterWarning==1),@"lastTabRecovery":@(self.tabs.count==1 && self.tabs.firstObject.engine!=nil)};
 }
 - (void)showEntries:(NSArray<NSDictionary *> *)entries title:(NSString *)title history:(BOOL)history {
     UIAlertController *list=[UIAlertController alertControllerWithTitle:title message:entries.count ? nil : @"Henüz bir şey yok." preferredStyle:UIAlertControllerStyleActionSheet];
