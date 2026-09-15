@@ -8,6 +8,9 @@ targets:
     platform: tvOS
     sources:
       - path: native
+    dependencies:
+      - sdk: AVKit.framework
+      - sdk: AVFoundation.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.chainmedia.seyir.personal

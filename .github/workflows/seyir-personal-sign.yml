@@ -1,0 +1,32 @@
+name: Seyir - sign for registered TV
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sign:
+    runs-on: macos-26
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: command -v xcodegen || brew install xcodegen
+      - name: Sign personal build
+        env:
+          IMZA_P12: ${{ secrets.IMZA_P12 }}
+          IMZA_P12_PAROLA: ${{ secrets.IMZA_P12_PAROLA }}
+          SEYIR_PERSONAL_PROFILE: ${{ secrets.SEYIR_PERSONAL_PROFILE }}
+        run: python3 .seyir-personal/ci/sign_personal.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: seyir-signed-personal
+          path: |
+            signed/package/*.ipa
+            signed/Seyir.xcarchive/dSYMs/
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: seyir-signing-logs
+          path: signed/*.log
+          retention-days: 7

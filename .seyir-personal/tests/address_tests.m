@@ -10,6 +10,7 @@ int main(void) { @autoreleasepool {
     NSURL *query=SeyirResolveAddress(@"maç & özet + canlı");
     NSURLComponents *parts=[NSURLComponents componentsWithURL:query resolvingAgainstBaseURL:NO];
     require([parts.queryItems.firstObject.value isEqualToString:@"maç & özet + canlı"],@"Turkish query preserved");
+    require([parts.percentEncodedQuery containsString:@"%2B"],@"Literal plus is not form whitespace");
     NSString *suite=[@"seyir-test-" stringByAppendingString:NSUUID.UUID.UUIDString];
     NSUserDefaults *defaults=[[NSUserDefaults alloc] initWithSuiteName:suite];
     SeyirLibrary *lib=[[SeyirLibrary alloc] initWithDefaults:defaults];

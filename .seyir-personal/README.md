@@ -14,7 +14,18 @@ Apple TV için cihaz üzerinde çalışan tarayıcı projesi. Seyir geçici kod 
 
 **Henüz çalışan veya TestFlight'a yüklenmiş bir Seyir sürümü yok.**
 
-Motor uyumluluğu inceleniyor. Chromium'un upstream tvOS Blink portu gerçek cihazda YouTube oynatmayı göstermiştir, fakat deneysel ve tek süreçlidir. Bu portun derlenebilir olması, genel web gezintisi için güvenli ve kararlı olduğu veya App Store tarafından kabul edileceği anlamına gelmez.
+Hedef cihaz: A2737, tvOS 26.6 (23L773).
+
+İlk GitHub testi tvOS 26.5 simülatöründe sistem WebKit'inin yüklenebildiğini, yerel HTML açtığını ve JavaScript sonucunun 42 olduğunu doğruladı. Bu **gerçek cihaz testi değildir**. `native/` altında bu motoru kullanan açıkça kişisel kullanıma ayrılmış bir uygulama geliştiriliyor. Apple'ın desteklemediği tvOS WebKit erişimi nedeniyle App Store/TestFlight uyumluluğu iddia edilmez. Adaptör `SEYIR_PERSONAL_BUILD=1` olmadan derlenmez.
+
+Alternatif olarak Chromium'un upstream tvOS Blink portu gerçek cihazda YouTube oynatmayı göstermiştir, fakat deneysel ve tek süreçlidir. Bu portun derlenebilir olması, genel web gezintisi için güvenli ve kararlı olduğu veya App Store tarafından kabul edileceği anlamına gelmez.
+
+## Kaynak düzeni
+
+- `native/`: Yerel kumanda arayüzü, kişisel WebKit adaptörü, adres/arama, favoriler ve geçmiş.
+- `tests/`: Adres doğrulama, Türkçe arama kodlaması ve kayıt kurtarma testleri.
+- `project.yml`: XcodeGen tvOS projesi.
+- `ci/`: macOS üzerinde cihaz/simülatör derlemesi ve gerçek uygulamadan ekran görüntüleri. CI başarısı tek başına video oynatma başarısı anlamına gelmez; sayfa/video çıktıları ayrıca incelenir.
 
 Kaynaklar:
 

@@ -28,6 +28,7 @@
             [self.engine evaluateForTesting:@"(()=>{const buttons=[...document.querySelectorAll('button')];const reject=buttons.find(b=>/^(Reject all|Tümünü reddet)$/.test(b.innerText.trim()));if(reject)reject.click();const v=document.querySelector('video');if(v){v.muted=true;v.play().catch(()=>{});}return JSON.stringify({title:document.title,video:!!v})})()" completion:^(id value,NSError *error){NSLog(@"SEYIR_TEST initial=%@ error=%@",value,error);}];
         });
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,25*NSEC_PER_SEC),dispatch_get_main_queue(),^{
+            NSLog(@"SEYIR_TEST nativeMedia=%@",[self.browser mediaDiagnostics]);
             [self.engine evaluateForTesting:@"JSON.stringify({title:document.title,ready:document.readyState,video:(()=>{const v=document.querySelector('video');return v?{time:v.currentTime,paused:v.paused,ready:v.readyState,error:v.error?.code,width:v.videoWidth}:null})(),remote:!!window.__seyirRemote})" completion:^(id value,NSError *error){NSLog(@"SEYIR_TEST result=%@ error=%@",value,error);}];
         });
     }

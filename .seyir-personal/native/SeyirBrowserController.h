@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)activateFocusedElement;
 - (void)setFocusedText:(NSString *)text;
 - (void)enterVideoFullscreen;
+- (void)pauseMedia;
 @end
 
 @interface SeyirBrowserController : UIViewController
@@ -21,5 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setPageFullscreen:(BOOL)fullscreen;
 - (void)showPageError:(NSString *)message;
 - (void)requestTextInput:(NSString *)value secure:(BOOL)secure;
+- (void)playMediaURL:(NSURL *)url;
+- (NSDictionary *)mediaDiagnostics;
 @end
 NS_ASSUME_NONNULL_END

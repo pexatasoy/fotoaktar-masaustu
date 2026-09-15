@@ -16,5 +16,7 @@ NSURL *SeyirResolveAddress(NSString *input) {
     }
     NSURLComponents *search = [NSURLComponents componentsWithString:@"https://www.google.com/search"];
     search.queryItems = @[[NSURLQueryItem queryItemWithName:@"q" value:value]];
+    // Search endpoints commonly parse queries as form data, where '+' is a space.
+    search.percentEncodedQuery = [search.percentEncodedQuery stringByReplacingOccurrencesOfString:@"+" withString:@"%2B"];
     return search.URL;
 }

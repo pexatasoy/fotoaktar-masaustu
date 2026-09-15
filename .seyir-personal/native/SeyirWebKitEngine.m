@@ -18,6 +18,7 @@
 - (id)goBack;
 - (id)reload;
 - (void)stopLoading;
+- (void)pauseAllMediaPlaybackWithCompletionHandler:(void (^)(void))completion;
 - (void)evaluateJavaScript:(NSString *)script completionHandler:(void (^)(id,NSError *))completion;
 @end
 
@@ -99,7 +100,11 @@
 - (void)reload { [self.webView reload]; }
 - (void)stop { [self.webView stopLoading];[self.controller setPageLoading:NO]; }
 - (void)run:(NSString *)script { [self.webView evaluateJavaScript:script completionHandler:nil]; }
-- (void)suspend { [self stop];[self run:@"document.querySelectorAll('video,audio').forEach(m=>m.pause())"]; }
+- (void)pauseMedia {
+    if([self.webView respondsToSelector:@selector(pauseAllMediaPlaybackWithCompletionHandler:)]) [self.webView pauseAllMediaPlaybackWithCompletionHandler:nil];
+    else [self run:@"document.querySelectorAll('video,audio').forEach(m=>m.pause())"];
+}
+- (void)suspend { [self stop];[self pauseMedia]; }
 - (void)togglePlayback { [self run:@"window.__seyirRemote?.togglePlayback()"]; }
 - (void)enterVideoFullscreen { [self run:@"(()=>{const v=[...document.querySelectorAll('video')].sort((a,b)=>b.clientWidth*b.clientHeight-a.clientWidth*a.clientHeight)[0]; if(v){if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();else if(v.requestFullscreen)v.requestFullscreen().catch(()=>{});}})()"]; }
 - (void)moveFocusX:(NSInteger)x y:(NSInteger)y { [self run:[NSString stringWithFormat:@"window.__seyirRemote?.move(%ld,%ld)",(long)x,(long)y]]; }
@@ -123,6 +128,8 @@
 }
 - (void)webView:(id)view didFailProvisionalNavigation:(id)navigation withError:(NSError *)error {
     if(error.code==NSURLErrorCancelled) return;
+    // WebKit's 204 is a media plug-in handoff, not a failed page.
+    if([error.domain isEqualToString:@"WebKitErrorDomain"] && error.code==204) { [self.controller setPageLoading:NO];return; }
     [self.controller showPageError:error.localizedDescription];
 }
 - (void)webView:(id)view didFailNavigation:(id)navigation withError:(NSError *)error { [self webView:view didFailProvisionalNavigation:navigation withError:error]; }
@@ -131,6 +138,18 @@
     NSURLRequest *request=[action valueForKey:@"request"];
     NSString *scheme=request.URL.scheme.lowercaseString;
     handler([@[@"http",@"https",@"about"] containsObject:scheme] ? 1 : 0);
+}
+- (void)webView:(id)view decidePolicyForNavigationResponse:(id)navigationResponse decisionHandler:(void (^)(NSInteger))handler {
+    NSURLResponse *response=[navigationResponse valueForKey:@"response"];
+    NSString *mime=response.MIMEType.lowercaseString;
+    BOOL mainFrame=[[navigationResponse valueForKey:@"forMainFrame"] boolValue];
+    BOOL media=[mime hasPrefix:@"video/"] || [mime hasPrefix:@"audio/"] || [@[@"application/vnd.apple.mpegurl",@"application/x-mpegurl"] containsObject:mime];
+    if(mainFrame && media) {
+        handler(0);
+        NSURL *url=response.URL;
+        [self.controller didNavigateToURL:url title:url.lastPathComponent canGoBack:self.webView.canGoBack];
+        dispatch_async(dispatch_get_main_queue(),^{[self.controller playMediaURL:url];});
+    } else handler(1);
 }
 - (id)webView:(id)view createWebViewWithConfiguration:(id)configuration forNavigationAction:(id)action windowFeatures:(id)features {
     // One page at a time: open a user-activated new-window link in this page.

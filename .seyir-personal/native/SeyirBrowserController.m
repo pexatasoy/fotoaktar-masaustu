@@ -1,6 +1,7 @@
 #import "SeyirBrowserController.h"
 #import "SeyirAddress.h"
 #import "SeyirLibrary.h"
+#import <AVKit/AVKit.h>
 
 static UIColor *SeyirBackground(void) { return [UIColor colorWithWhite:0.055 alpha:1]; }
 static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:1]; }
@@ -22,6 +23,7 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
 @property(nonatomic) BOOL loading;
 @property(nonatomic) BOOL fullscreen;
 @property(nonatomic) BOOL focusToolbar;
+@property(nonatomic,strong) AVPlayerViewController *mediaController;
 @end
 
 @implementation SeyirBrowserController
@@ -71,11 +73,18 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
     self.address.keyboardType=UIKeyboardTypeWebSearch;self.address.returnKeyType=UIReturnKeyGo;
     self.address.autocorrectionType=UITextAutocorrectionTypeNo;self.address.autocapitalizationType=UITextAutocapitalizationTypeNone;
     self.address.accessibilityLabel=@"Web adresi veya Google araması";
+    [self.address.heightAnchor constraintEqualToConstant:60].active=YES;
     [self.address setContentHuggingPriority:UILayoutPriorityDefaultLow-1 forAxis:UILayoutConstraintAxisHorizontal];
     self.spinner=[[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
     UIButton *full=[self button:@"Tam ekran" symbol:@"arrow.up.left.and.arrow.down.right" action:@selector(expandVideo)];
+    for(UIButton *button in @[homeButton,self.backButton,self.reloadButton,self.starButton,full]) {
+        UIButtonConfiguration *config=button.configuration;config.title=nil;button.configuration=config;
+        [button.widthAnchor constraintEqualToConstant:76].active=YES;
+    }
     for(UIView *item in @[homeButton,self.backButton,self.address,self.spinner,self.reloadButton,self.starButton,full]) [self.toolbar addArrangedSubview:item];
     UIView *content=self.engine.contentView;content.translatesAutoresizingMaskIntoConstraints=NO;
+    UIPanGestureRecognizer *pan=[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
+    pan.allowedTouchTypes=@[@(UITouchTypeIndirect)];[content addGestureRecognizer:pan];
     self.toolbar.translatesAutoresizingMaskIntoConstraints=NO;
     [self.view addSubview:content];[self.view addSubview:self.toolbar];
     self.toolbarHeight=[self.toolbar.heightAnchor constraintEqualToConstant:108];
@@ -91,6 +100,7 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
 }
 - (void)showHome {
     [self.engine stop];
+    [self.engine pauseMedia];
     [self setPageFullscreen:NO];
     [self.home removeFromSuperview];
     self.home=[UIView new];self.home.backgroundColor=SeyirBackground();self.home.translatesAutoresizingMaskIntoConstraints=NO;
@@ -117,7 +127,7 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
         [stack addArrangedSubview:favorites];
         if(items.count>4) [stack addArrangedSubview:[self button:@"Tüm favoriler" symbol:@"star" action:@selector(showFavorites)]];
     }
-    UILabel *hint=[self label:@"Sayfadayken geri tuşu araç çubuğunu açar." size:20 weight:UIFontWeightRegular];hint.textColor=[UIColor colorWithWhite:0.45 alpha:1];[stack addArrangedSubview:hint];
+    UILabel *hint=[self label:@"Geri tuşuyla araç çubuğuna geçebilirsin." size:20 weight:UIFontWeightRegular];hint.textColor=[UIColor colorWithWhite:0.45 alpha:1];[stack addArrangedSubview:hint];
     self.focusToolbar=NO;[self setNeedsFocusUpdate];
 }
 - (NSArray<id<UIFocusEnvironment>> *)preferredFocusEnvironments {
@@ -155,7 +165,8 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
 - (void)setPageLoading:(BOOL)loading {
     self.loading=loading;
     if(loading) [self.spinner startAnimating];else [self.spinner stopAnimating];
-    UIButtonConfiguration *config=self.reloadButton.configuration;config.image=[UIImage systemImageNamed:loading ? @"xmark" : @"arrow.clockwise"];config.title=loading ? @"Durdur" : @"Yenile";self.reloadButton.configuration=config;
+    UIButtonConfiguration *config=self.reloadButton.configuration;config.image=[UIImage systemImageNamed:loading ? @"xmark" : @"arrow.clockwise"];self.reloadButton.configuration=config;
+    self.reloadButton.accessibilityLabel=loading ? @"Durdur" : @"Yenile";
 }
 - (void)setPageFullscreen:(BOOL)fullscreen {
     self.fullscreen=fullscreen;self.toolbar.hidden=fullscreen;self.toolbarHeight.constant=fullscreen ? 0 : 108;
@@ -173,9 +184,23 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
     UIAlertController *alert=[UIAlertController alertControllerWithTitle:secure ? @"Şifre" : @"Metin yaz" message:nil preferredStyle:UIAlertControllerStyleAlert];
     [alert addTextFieldWithConfigurationHandler:^(UITextField *field) { field.secureTextEntry=secure;field.text=value;field.autocapitalizationType=UITextAutocapitalizationTypeNone; }];
     __weak typeof(self) weakSelf=self;
-    [alert addAction:[UIAlertAction actionWithTitle:@"Tamam" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) { [weakSelf.engine setFocusedText:alert.textFields.firstObject.text ?: @""]; }]];
+    __weak UIAlertController *weakAlert=alert;
+    [alert addAction:[UIAlertAction actionWithTitle:@"Tamam" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) { [weakSelf.engine setFocusedText:weakAlert.textFields.firstObject.text ?: @""]; }]];
     [alert addAction:[UIAlertAction actionWithTitle:@"Vazgeç" style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
+}
+- (void)playMediaURL:(NSURL *)url {
+    if(self.presentedViewController || ![@[@"https",@"http"] containsObject:url.scheme.lowercaseString]) return;
+    [self.engine pauseMedia];[self setPageLoading:NO];
+    self.mediaController=[AVPlayerViewController new];
+    self.mediaController.player=[AVPlayer playerWithURL:url];
+    [self presentViewController:self.mediaController animated:YES completion:^{[self.mediaController.player play];}];
+}
+- (NSDictionary *)mediaDiagnostics {
+    AVPlayer *player=self.mediaController.player;
+    if(!player) return @{};
+    double seconds=CMTimeGetSeconds(player.currentTime);
+    return @{@"time":@(isfinite(seconds) ? seconds : 0),@"status":@(player.currentItem.status),@"rate":@(player.rate),@"error":player.currentItem.error.localizedDescription ?: @""};
 }
 - (void)showEntries:(NSArray<NSDictionary *> *)entries title:(NSString *)title history:(BOOL)history {
     UIAlertController *list=[UIAlertController alertControllerWithTitle:title message:entries.count ? nil : @"Henüz bir şey yok." preferredStyle:UIAlertControllerStyleActionSheet];
@@ -187,6 +212,14 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
 }
 - (void)showHistory { [self showEntries:self.library.history title:@"Geçmiş" history:YES]; }
 - (void)showFavorites { [self showEntries:self.library.favorites title:@"Favoriler" history:NO]; }
+- (void)handlePan:(UIPanGestureRecognizer *)gesture {
+    if(!self.home.hidden || self.focusToolbar) return;
+    CGPoint delta=[gesture translationInView:self.engine.contentView];
+    if(MAX(fabs(delta.x),fabs(delta.y))<48) return;
+    if(fabs(delta.x)>fabs(delta.y)) [self.engine moveFocusX:delta.x>0 ? 1 : -1 y:0];
+    else [self.engine moveFocusX:0 y:delta.y>0 ? 1 : -1];
+    [gesture setTranslation:CGPointZero inView:self.engine.contentView];
+}
 - (void)didUpdateFocusInContext:(UIFocusUpdateContext *)context withAnimationCoordinator:(UIFocusAnimationCoordinator *)coordinator {
     [super didUpdateFocusInContext:context withAnimationCoordinator:coordinator];
     if([context.nextFocusedView isDescendantOfView:self.engine.contentView] || context.nextFocusedView==self.engine.contentView) self.focusToolbar=NO;
