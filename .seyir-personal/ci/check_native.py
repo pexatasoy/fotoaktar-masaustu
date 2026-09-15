@@ -1,5 +1,5 @@
 """Build and capture the real personal tvOS app on a macOS CI runner."""
-import json, pathlib, subprocess, sys
+import json, pathlib, subprocess, sys, re
 ROOT=pathlib.Path(__file__).resolve().parent.parent
 OUT=pathlib.Path.cwd()/'evidence';OUT.mkdir(exist_ok=True)
 def run(args, **kw):
@@ -35,12 +35,16 @@ for mode in ['--home','--test-controls','--test-google','--test-youtube','--test
         except subprocess.TimeoutExpired:
             run(['xcrun','simctl','io',uid,'screenshot',str(OUT/(mode[2:]+'.png'))])
             proc.terminate();proc.wait(timeout=5)
-    text=(OUT/(mode[2:]+'.log')).read_text(errors='replace')
+    raw=(OUT/(mode[2:]+'.log')).read_bytes()
+    try:text=raw.decode('utf-8')
+    except UnicodeDecodeError:text=raw.decode('latin-1')
     print('\n'.join(x for x in text.splitlines() if 'SEYIR_TEST' in x or 'Terminating' in x or 'exception' in x),flush=True)
     if 'Terminating app due to' in text:raise SystemExit('Application crashed')
     if mode=='--test-controls':
-        for marker in ['"text":"tenis & maç"','"hits":1','"historyExcluded":true','"restorationExcluded":true']:
-            if marker not in text:raise SystemExit('Failed interaction/privacy assertion: '+marker)
+        controls=json.loads(re.search(r'SEYIR_TEST controls=(\{[^\n]+\}) error=',text).group(1))
+        privacy=json.loads(re.search(r'SEYIR_TEST privacy=(\{[^\n]+\})',text).group(1))
+        assert controls['text']=='tenis & maç' and controls['hits']==1 and controls['remote'], controls
+        assert privacy['historyExcluded'] and privacy['restorationExcluded'], privacy
     elif mode!='--home' and 'SEYIR_TEST result=' not in text:raise SystemExit('Missing page-test completion: '+mode)
     if mode.startswith('--test-tennis') and 'tennis attached=1' not in text:raise SystemExit('Tennis overlay is not attached')
 print('Compilation and page probes completed. Inspect media results before claiming playback.',flush=True)

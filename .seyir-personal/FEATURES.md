@@ -13,9 +13,9 @@
 
 İşaretlenmemiş maddeler tamamlanmış özellik iddiası değildir; kod ve gerçek cihaz testleri ayrıca doğrulanır.
 
-## Tarayıcıdan sonra
+## Mini tenis
 
-Video üzerinde küçük tenis oyunu. Kullanıcı ile rakip arasında karşılıklı vuruşlar. Öncelik tarayıcının çalışması ve arayüzüdür; oyun bu aşamada geliştirilmez.
+Kullanıcının yeni isteğiyle geliştirmeye alındı. Ekranın solunda video üzerinde küçük oyun alanı; şeffaf zemin veya yeşil kort seçimi. Yerel vektör çizimleri, hareketli rakip, zamanlamalı vuruş, tenis puanları ve üç oyunluk kısa maç. Dokunmatik yüzey hareket, tıklama vuruş, yukarı görünüm değişimi, aşağı duraklatma, geri kapatma. Derleme ve cihaz kontrolleri tamamlanmadan bitmiş özellik sayılmaz.
 
 Hareketle vuruş, bağlı kumandanın gerçekten hareket sensörü sağlamasına bağlıdır. İkinci nesil ve sonraki Siri Remote modelleri için sallama algısı varsayılmaz. Sensör yoksa dokunmatik yüzey veya uyumlu başka kontrolcü değerlendirilir.
 
