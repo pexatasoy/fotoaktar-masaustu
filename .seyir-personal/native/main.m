@@ -45,7 +45,7 @@
             [self.engine evaluateForTesting:@"(()=>{const r=document.querySelector('#counter').getBoundingClientRect();__seyirRemote.pointerClick((r.x+r.width/2)/innerWidth,(r.y+r.height/2)/innerHeight);return true})()" completion:^(id value,NSError *error){}];
         });
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,12*NSEC_PER_SEC),dispatch_get_main_queue(),^{
-            [self.engine evaluateForTesting:@"JSON.stringify({text:document.querySelector('#text').value,hits:window.hits||0,remote:!!window.__seyirRemote})" completion:^(id value,NSError *error){NSLog(@"SEYIR_TEST controls=%@ error=%@",value,error);}];
+            [self.engine evaluateForTesting:@"(()=>{const before=window.hits;__seyirRemote.setInputLocked(true);document.querySelector('#counter').click();const isolated=window.hits===before;__seyirRemote.setInputLocked(false);const v=document.createElement('video');document.body.appendChild(v);const expanded=__seyirRemote.expandVideo();const full=expanded && Math.abs(v.getBoundingClientRect().height-innerHeight)<2;__seyirRemote.exitVideo();window.webkit.messageHandlers.seyirInput.postMessage({fullscreen:false});v.remove();return JSON.stringify({text:document.querySelector('#text').value,hits:window.hits||0,remote:!!window.__seyirRemote,isolated,fullscreen:full})})()" completion:^(id value,NSError *error){NSLog(@"SEYIR_TEST controls=%@ error=%@",value,error);}];
             NSData *data=[NSJSONSerialization dataWithJSONObject:[self.browser privacyDiagnostics] options:0 error:nil];
             NSLog(@"SEYIR_TEST privacy=%@",[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
             [self.browser prepareDiagnosticPage];[self.browser performSelector:NSSelectorFromString(@"toggleCursor")];

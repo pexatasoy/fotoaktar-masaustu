@@ -44,6 +44,7 @@ for mode in ['--home','--test-controls','--test-google','--test-youtube','--test
         controls=json.loads(re.search(r'SEYIR_TEST controls=(\{[^\n]+\}) error=',text).group(1))
         privacy=json.loads(re.search(r'SEYIR_TEST privacy=(\{[^\n]+\})',text).group(1))
         assert controls['text']=='tenis & maç' and controls['hits']==1 and controls['remote'], controls
+        assert controls['isolated'] and controls['fullscreen'], controls
         assert privacy['historyExcluded'] and privacy['restorationExcluded'], privacy
         session=json.loads(re.search(r'SEYIR_TEST session=(\{[^\n]+\})',text).group(1))
         assert all(session.get(key) for key in ['restored','residentLimit','memoryRelease','lastTabRecovery']), session
