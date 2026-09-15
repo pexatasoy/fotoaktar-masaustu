@@ -170,7 +170,7 @@ jobs:
           cek "$TEL" tr "-gelistirici -sahne aynabolum:14" tel_a_bolum15
           cek "$TEL" tr "-gelistirici -sahne aynabolum:29" tel_a_bolum30
           cek "$TEL" tr "-sahne aynasoru:1"                tel_a_soru_d1
-          cek "$TEL" tr "-sahne aynafisilti:7"             tel_a_fisilti_d7
+          cek "$TEL" tr "-sahne aynasoru:7"                tel_a_soru_d7
           cek "$TEL" tr "-sahne aynaonay"                  tel_a_onay
           cek "$TEL" tr "-gelistiriciKapat -tarz dunya -manzara batim" tel_tarz_geri2
           cek "$TEL" en "-perde dukkan"     tel_dukkan_en
