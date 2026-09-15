@@ -1,0 +1,27 @@
+name: Seyir
+options:
+  deploymentTarget:
+    tvOS: "18.0"
+targets:
+  Seyir:
+    type: application
+    platform: tvOS
+    sources:
+      - path: native
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.chainmedia.seyir.personal
+        INFOPLIST_KEY_CFBundleDisplayName: Seyir
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "3"
+        CLANG_ENABLE_OBJC_ARC: YES
+        GCC_PREPROCESSOR_DEFINITIONS:
+          - "$(inherited)"
+          - "SEYIR_PERSONAL_BUILD=1"
+          - "SEYIR_DIAGNOSTICS=0"
+        DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+        CODE_SIGN_STYLE: Manual
