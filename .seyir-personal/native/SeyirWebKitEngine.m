@@ -13,9 +13,13 @@
 @property(nonatomic,readonly) NSURL *URL;
 @property(nonatomic,readonly) NSString *title;
 @property(nonatomic,readonly) BOOL canGoBack;
+@property(nonatomic,readonly) BOOL canGoForward;
+@property(nonatomic) CGFloat pageZoom;
 - (id)initWithFrame:(CGRect)frame configuration:(id)configuration;
 - (id)loadRequest:(NSURLRequest *)request;
+- (id)loadHTMLString:(NSString *)html baseURL:(NSURL *)base;
 - (id)goBack;
+- (id)goForward;
 - (id)reload;
 - (void)stopLoading;
 - (void)pauseAllMediaPlaybackWithCompletionHandler:(void (^)(void))completion;
@@ -31,6 +35,13 @@
 @property(nonatomic) NSUInteger mediaTypesRequiringUserActionForPlayback;
 @property(nonatomic) BOOL allowsInlineMediaPlayback;
 @property(nonatomic,readonly) id userContentController;
+@property(nonatomic,strong) id websiteDataStore;
+@end
+@protocol SeyirWebsiteDataStore <NSObject>
++ (id)nonPersistentDataStore;
++ (id)defaultDataStore;
++ (NSSet *)allWebsiteDataTypes;
+- (void)removeDataOfTypes:(NSSet *)types modifiedSince:(NSDate *)date completionHandler:(void (^)(void))completion;
 @end
 @protocol SeyirUserContentController <NSObject>
 - (void)addScriptMessageHandler:(id)handler name:(NSString *)name;
@@ -59,7 +70,9 @@
 @end
 
 @implementation SeyirWebKitEngine
-- (instancetype)init {
+- (instancetype)init { return [self initPrivate:NO]; }
+- (id<SeyirBrowserEngine>)newEnginePrivate:(BOOL)privateMode { return [[SeyirWebKitEngine alloc] initPrivate:privateMode]; }
+- (instancetype)initPrivate:(BOOL)privateMode {
     if ((self=[super init])) {
         _container=[SeyirContentSurface new];_container.backgroundColor=UIColor.blackColor;
         dlopen("/System/Library/Frameworks/WebKit.framework/WebKit",RTLD_LAZY|RTLD_LOCAL);
@@ -67,6 +80,7 @@
         Class configClass=NSClassFromString(@"WKWebViewConfiguration");
         if (!cls || !configClass) return self;
         id<SeyirConfiguration> config=[configClass new];
+        if(privateMode) config.websiteDataStore=[(Class<SeyirWebsiteDataStore>)NSClassFromString(@"WKWebsiteDataStore") nonPersistentDataStore];
         config.mediaTypesRequiringUserActionForPlayback=0;
         config.allowsInlineMediaPlayback=YES;
         _userContent=config.userContentController;
@@ -97,6 +111,9 @@
     [self.webView loadRequest:[NSURLRequest requestWithURL:url cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:30]];
 }
 - (void)goBack { [self.webView goBack]; }
+- (void)goForward { [self.webView goForward]; }
+- (BOOL)canGoForward { return self.webView.canGoForward; }
+- (BOOL)canGoBack { return self.webView.canGoBack; }
 - (void)reload { [self.webView reload]; }
 - (void)stop { [self.webView stopLoading];[self.controller setPageLoading:NO]; }
 - (void)run:(NSString *)script { [self.webView evaluateJavaScript:script completionHandler:nil]; }
@@ -108,6 +125,20 @@
 - (void)togglePlayback { [self run:@"window.__seyirRemote?.togglePlayback()"]; }
 - (void)enterVideoFullscreen { [self run:@"(()=>{const v=[...document.querySelectorAll('video')].sort((a,b)=>b.clientWidth*b.clientHeight-a.clientWidth*a.clientHeight)[0]; if(v){if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();else if(v.requestFullscreen)v.requestFullscreen().catch(()=>{});}})()"]; }
 - (void)moveFocusX:(NSInteger)x y:(NSInteger)y { [self run:[NSString stringWithFormat:@"window.__seyirRemote?.move(%ld,%ld)",(long)x,(long)y]]; }
+- (void)pointerMoveX:(double)x y:(double)y { [self run:[NSString stringWithFormat:@"window.__seyirRemote?.pointerMove(%f,%f)",x,y]]; }
+- (void)pointerClickX:(double)x y:(double)y { [self run:[NSString stringWithFormat:@"window.__seyirRemote?.pointerClick(%f,%f)",x,y]]; }
+- (void)scrollPageX:(double)x y:(double)y { [self run:[NSString stringWithFormat:@"window.scrollBy(%f,%f)",x,y]]; }
+- (void)setPageZoom:(double)zoom { if([self.webView respondsToSelector:@selector(setPageZoom:)]) self.webView.pageZoom=MAX(.5,MIN(2,zoom)); }
+- (void)findText:(NSString *)text completion:(void (^)(BOOL))completion {
+    NSData *data=[NSJSONSerialization dataWithJSONObject:@[text] options:0 error:nil];
+    NSString *json=[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    [self.webView evaluateJavaScript:[NSString stringWithFormat:@"window.find((%@)[0],false,false,true)",json] completionHandler:^(id value,NSError *error){completion(!error && [value boolValue]);}];
+}
+- (void)clearWebsiteData:(void (^)(void))completion {
+    Class<SeyirWebsiteDataStore> storeClass=(Class<SeyirWebsiteDataStore>)NSClassFromString(@"WKWebsiteDataStore");
+    id<SeyirWebsiteDataStore> store=[storeClass defaultDataStore];
+    [store removeDataOfTypes:[storeClass allWebsiteDataTypes] modifiedSince:[NSDate distantPast] completionHandler:completion];
+}
 - (void)activateFocusedElement { [self run:@"window.__seyirRemote?.activate()"]; }
 - (void)setFocusedText:(NSString *)text {
     NSData *data=[NSJSONSerialization dataWithJSONObject:@[text] options:0 error:nil];
@@ -160,4 +191,5 @@
     return nil;
 }
 - (void)evaluateForTesting:(NSString *)script completion:(void (^)(id,NSError *))completion { [self.webView evaluateJavaScript:script completionHandler:completion]; }
+- (void)loadHTMLForTesting:(NSString *)html { [self.webView loadHTMLString:html baseURL:nil]; }
 @end

@@ -54,7 +54,21 @@
     const video = [...document.querySelectorAll('video')].sort((a,b) => b.clientWidth*b.clientHeight-a.clientWidth*a.clientHeight)[0];
     if (video) { if(video.paused) video.play().catch(() => {}); else video.pause(); }
   }
+  function pointerMove(x, y) {
+    const px=Math.max(0,Math.min(innerWidth-1,x*innerWidth));
+    const py=Math.max(0,Math.min(innerHeight-1,y*innerHeight));
+    ring.style.display='none';
+    const target=document.elementFromPoint(px,py);
+    if(target) target.dispatchEvent(new MouseEvent('mousemove',{bubbles:true,clientX:px,clientY:py}));
+  }
+  function pointerClick(x,y) {
+    const target=document.elementFromPoint(Math.max(0,Math.min(innerWidth-1,x*innerWidth)),Math.max(0,Math.min(innerHeight-1,y*innerHeight)));
+    if(!target) return;
+    selected=target.closest('a,button,input,textarea,select,[role=button]') || target;
+    activate();
+    ring.style.display='none';
+  }
   addEventListener('scroll', paint, { passive: true });
   addEventListener('resize', paint, { passive: true });
-  Object.defineProperty(window, '__seyirRemote', { value: { move, activate, setText, togglePlayback }, configurable: false });
+  Object.defineProperty(window, '__seyirRemote', { value: { move, activate, setText, togglePlayback, pointerMove, pointerClick }, configurable: false });
 })();
