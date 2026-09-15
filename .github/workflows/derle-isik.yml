@@ -166,10 +166,12 @@ jobs:
           cek "$TEL" tr "-tarz ayna -sahne demo:40"        tel_k_kazanma
           # Gizli dünyanın içi
           cek "$TEL" tr "-sahne aynaliste"                 tel_a_liste
-          cek "$TEL" tr "-sahne aynagiris"                 tel_a_giris
+          cek "$TEL" tr "-gelistirici -sahne aynagiris"           tel_a_giris
+          cek "$TEL" tr "-gelistirici -sahne aynabolum:14" tel_a_bolum15
+          cek "$TEL" tr "-gelistirici -sahne aynabolum:29" tel_a_bolum30
           cek "$TEL" tr "-sahne aynasoru:1"                tel_a_soru_d1
           cek "$TEL" tr "-sahne aynasoru:7"                tel_a_soru_d7
-          cek "$TEL" tr "-tarz dunya -manzara batim"       tel_tarz_geri2
+          cek "$TEL" tr "-gelistiriciKapat -tarz dunya -manzara batim" tel_tarz_geri2
           cek "$TEL" en "-perde dukkan"     tel_dukkan_en
           cek "$TEL" tr "-perde ayarlar"    tel_ayarlar_tr
           cek "$TEL" tr "-perde profil"     tel_profil_tr
