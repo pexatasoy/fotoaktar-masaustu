@@ -47,6 +47,7 @@ for mode in ['--home','--test-controls','--test-google','--test-youtube','--test
         assert privacy['historyExcluded'] and privacy['restorationExcluded'], privacy
         session=json.loads(re.search(r'SEYIR_TEST session=(\{[^\n]+\})',text).group(1))
         assert all(session.get(key) for key in ['restored','residentLimit','memoryRelease','lastTabRecovery']), session
+        assert 'gameInputLocked=1' in text, 'Background input was not locked'
     elif mode!='--home' and 'SEYIR_TEST result=' not in text:raise SystemExit('Missing page-test completion: '+mode)
     if mode.startswith('--test-tennis') and 'tennis attached=1' not in text:raise SystemExit('Tennis overlay is not attached')
     if mode.startswith('--test-tennis') and 'tennis focused=1' not in text:raise SystemExit('Tennis overlay did not receive remote focus')

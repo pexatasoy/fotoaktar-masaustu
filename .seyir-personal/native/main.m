@@ -54,6 +54,12 @@
             NSData *data=[NSJSONSerialization dataWithJSONObject:[self.browser sessionDiagnostics] options:0 error:nil];
             NSLog(@"SEYIR_TEST session=%@",[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
         });
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,14*NSEC_PER_SEC),dispatch_get_main_queue(),^{
+            [self.browser performSelector:NSSelectorFromString(@"showTennis")];
+            UIView *host=[self.browser valueForKey:@"engineHost"],*toolbar=[self.browser valueForKey:@"toolbar"];
+            NSLog(@"SEYIR_TEST gameInputLocked=%d",!host.userInteractionEnabled && !toolbar.userInteractionEnabled);
+        });
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,16*NSEC_PER_SEC),dispatch_get_main_queue(),^{[self.browser performSelector:NSSelectorFromString(@"closeTennis")];});
     }
     NSString *url=nil;
     if([args containsObject:@"--test-google"]) url=@"https://www.google.com/search?q=Apple+TV";

@@ -18,6 +18,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)activateFocusedElement;
 - (void)setFocusedText:(NSString *)text;
 - (void)enterVideoFullscreen;
+- (void)exitVideoFullscreen;
+- (void)setInputLocked:(BOOL)locked;
 - (void)pauseMedia;
 - (void)pointerMoveX:(double)x y:(double)y;
 - (void)pointerClickX:(double)x y:(double)y;

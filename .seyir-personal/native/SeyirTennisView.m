@@ -1,4 +1,5 @@
 #import "SeyirTennisView.h"
+#import <GameController/GameController.h>
 
 @interface SeyirTennisView ()
 @property(nonatomic,strong) CADisplayLink *clock;
@@ -8,6 +9,8 @@
 @property(nonatomic) NSInteger playerPoints, opponentPoints, playerGames, opponentGames;
 @property(nonatomic) BOOL gamePaused;
 @property(nonatomic,copy) NSString *notice;
+@property(nonatomic,strong) GCMotion *motion;
+@property(nonatomic) double neutralTilt;
 @end
 
 @implementation SeyirTennisView
@@ -20,6 +23,8 @@
         UIPanGestureRecognizer *pan=[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)];
         pan.allowedTouchTypes=@[@(UITouchTypeIndirect)];[self addGestureRecognizer:pan];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(suspendGame) name:UIApplicationWillResignActiveNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(bindMotion) name:GCControllerDidConnectNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(bindMotion) name:GCControllerDidDisconnectNotification object:nil];
     }
     return self;
 }
@@ -27,12 +32,30 @@
 - (void)didMoveToWindow {
     [super didMoveToWindow];
     [self.clock invalidate];self.clock=nil;self.lastTime=0;
+    [self bindMotion];
     if(self.window){self.clock=[CADisplayLink displayLinkWithTarget:self selector:@selector(tick:)];self.clock.preferredFramesPerSecond=30;[self.clock addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];self.clock.paused=self.gamePaused || self.pointDelay<0;}
 }
-- (void)dealloc { [self.clock invalidate];[[NSNotificationCenter defaultCenter] removeObserver:self]; }
+- (void)dealloc { self.motion.valueChangedHandler=nil;[self.clock invalidate];[[NSNotificationCenter defaultCenter] removeObserver:self]; }
+- (void)bindMotion {
+    self.motion.valueChangedHandler=nil;self.motion=nil;
+    if(!self.window)return;
+    for(GCController *controller in GCController.controllers)if(controller.motion.hasGravityAndUserAcceleration){self.motion=controller.motion;break;}
+    if(!self.motion)return;
+    if(self.motion.sensorsRequireManualActivation)self.motion.sensorsActive=YES;
+    self.neutralTilt=self.motion.gravity.x;
+    __weak typeof(self) weakSelf=self;
+    self.motion.valueChangedHandler=^(GCMotion *motion){
+        double tilt=motion.gravity.x;
+        dispatch_async(dispatch_get_main_queue(),^{
+            if(!weakSelf.window || weakSelf.gamePaused)return;
+            CGFloat target=MAX(.1,MIN(.9,.5+(tilt-weakSelf.neutralTilt)*.85));
+            [weakSelf moveBy:(target-weakSelf.playerX)*.25];
+        });
+    };
+}
 - (void)suspendGame { self.gamePaused=YES;self.clock.paused=YES;[self setNeedsDisplay]; }
 - (void)setCourtBackground:(BOOL)value { _courtBackground=value;[self setNeedsDisplay]; }
-- (void)moveBy:(CGFloat)delta { if(!self.gamePaused) self.playerX=MAX(.1,MIN(.9,self.playerX+delta));[self setNeedsDisplay]; }
+- (void)moveBy:(CGFloat)delta { if(!self.gamePaused) self.playerX=MAX(.1,MIN(.9,self.playerX+delta));if(self.pointDelay<0)self.ballX=self.playerX;[self setNeedsDisplay]; }
 - (void)pan:(UIPanGestureRecognizer *)gesture { CGPoint p=[gesture translationInView:self];[self moveBy:p.x/MAX(1,self.bounds.size.width)];[gesture setTranslation:CGPointZero inView:self]; }
 - (void)swing {
     if(self.gamePaused){[self togglePause];return;}
@@ -110,7 +133,7 @@
     CGContextFillEllipseInRect(c,CGRectMake(self.ballX-.013,self.ballY-.01,.026,.02));CGContextRestoreGState(c);
     NSString *notice=self.gamePaused ? @"Duraklatıldı · Tıkla ve devam et" : self.notice;
     if(notice.length){[[UIColor colorWithWhite:.02 alpha:.82] setFill];[[UIBezierPath bezierPathWithRoundedRect:CGRectMake(18,h/2-20,w-36,40) cornerRadius:12] fill];[self text:notice rect:CGRectMake(20,h/2-12,w-40,28) size:16 color:UIColor.whiteColor];}
-    [self text:@"Kaydır: hareket  ·  Tıkla: vur" rect:CGRectMake(8,h-53,w-16,24) size:14 color:UIColor.whiteColor];
+    [self text:self.motion ? @"Eğ: hareket  ·  Tıkla: vur" : @"Kaydır: hareket  ·  Tıkla: vur" rect:CGRectMake(8,h-53,w-16,24) size:14 color:UIColor.whiteColor];
     [self text:@"↑ Kort / şeffaf   ↓ Duraklat   Geri: kapat" rect:CGRectMake(8,h-29,w-16,22) size:11 color:[UIColor colorWithWhite:.8 alpha:1]];
 }
 - (void)pressesBegan:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event {
@@ -123,6 +146,8 @@
         case UIPressTypeMenu:if(self.onClose)self.onClose();return;
         default:break;
     }
-    [super pressesBegan:presses withEvent:event];
+    // While playing, consume unassigned buttons too; never send them to the page.
 }
+- (void)pressesEnded:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event {}
+- (void)pressesCancelled:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event {}
 @end

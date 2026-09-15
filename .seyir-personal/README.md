@@ -12,7 +12,7 @@ Apple TV için cihaz üzerinde çalışan tarayıcı projesi. Seyir geçici kod 
 
 ## Durum
 
-**Cihaz ve simülatör derlemeleri başarılı; fiziksel Apple TV kurulumu ve imzalı dağıtım henüz yapılmadı.** Google araması simülatörde açıldı. YouTube testi bot doğrulamasında kaldığı için YouTube oynatma doğrulanmış değil. Doğrudan video için yerel AVPlayer kullanılıyor.
+**Cihaz ve simülatör derlemeleri başarılı; imzalı kişisel IPA fiziksel Apple TV'ye kuruldu. İlk açılış ve fiziksel kullanım testi bekleniyor.** Google araması simülatörde açıldı. YouTube testi bot doğrulamasında kaldığı için YouTube oynatma doğrulanmış değil. Doğrudan video için yerel AVPlayer kullanılıyor.
 
 Hedef cihaz: A2737, tvOS 26.6 (23L773).
 

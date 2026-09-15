@@ -11,10 +11,12 @@ targets:
     dependencies:
       - sdk: AVKit.framework
       - sdk: AVFoundation.framework
+      - sdk: GameController.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.chainmedia.seyir.personal
-        INFOPLIST_KEY_CFBundleDisplayName: Seyir
+        INFOPLIST_KEY_CFBundleDisplayName: BrowseTV
+        ASSETCATALOG_COMPILER_APPICON_NAME: Brand
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO

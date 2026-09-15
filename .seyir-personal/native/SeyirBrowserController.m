@@ -209,7 +209,7 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
     UIStackView *stack=[UIStackView new];self.homeRows=stack;stack.axis=UILayoutConstraintAxisVertical;stack.spacing=30;stack.translatesAutoresizingMaskIntoConstraints=NO;
     [self.home addSubview:stack];
     [NSLayoutConstraint activateConstraints:@[[stack.topAnchor constraintEqualToAnchor:self.home.topAnchor constant:54],[stack.leadingAnchor constraintEqualToAnchor:self.home.leadingAnchor constant:84],[stack.trailingAnchor constraintEqualToAnchor:self.home.trailingAnchor constant:-84]]];
-    UILabel *brand=[self label:@"seyir" size:64 weight:UIFontWeightSemibold];
+    UILabel *brand=[self label:@"BrowseTV" size:64 weight:UIFontWeightSemibold];
     [stack addArrangedSubview:brand];
     UILabel *subtitle=[self label:self.tabs[self.tabIndex].privateMode ? @"Gizli sekme" : @"Nereye bakalım?" size:28 weight:UIFontWeightRegular];subtitle.textColor=[UIColor colorWithWhite:0.6 alpha:1];[stack addArrangedSubview:subtitle];
     UIStackView *quick=[UIStackView new];quick.axis=UILayoutConstraintAxisHorizontal;quick.spacing=20;quick.distribution=UIStackViewDistributionFillEqually;
@@ -276,6 +276,7 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
     self.reloadButton.accessibilityLabel=loading ? @"Durdur" : @"Yenile";
 }
 - (void)setPageFullscreen:(BOOL)fullscreen {
+    if(!fullscreen)[self.engine exitVideoFullscreen];
     self.fullscreen=fullscreen;self.toolbar.hidden=fullscreen;self.toolbarHeight.constant=fullscreen ? 0 : 156;
     [self.view layoutIfNeeded];
 }
@@ -308,15 +309,25 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
     [self.tennis removeFromSuperview];self.tennis.translatesAutoresizingMaskIntoConstraints=NO;
     [host addSubview:self.tennis];
     self.mediaController.gameOverlay=self.tennis;
+    [self setGameInputLocked:YES];
     [NSLayoutConstraint activateConstraints:@[[self.tennis.leadingAnchor constraintEqualToAnchor:host.safeAreaLayoutGuide.leadingAnchor constant:18],[self.tennis.centerYAnchor constraintEqualToAnchor:host.centerYAnchor],[self.tennis.widthAnchor constraintEqualToConstant:330],[self.tennis.heightAnchor constraintEqualToConstant:530]]];
     [host setNeedsFocusUpdate];[self.mediaController setNeedsFocusUpdate];[self.mediaController updateFocusIfNeeded];[self setNeedsFocusUpdate];
 }
 - (void)showTennis {
-    if(self.tennis){[self.tennis removeFromSuperview];self.tennis=nil;[self setNeedsFocusUpdate];return;}
+    if(self.tennis){[self closeTennis];return;}
     self.tennis=[[SeyirTennisView alloc] initWithFrame:CGRectZero];
     __weak typeof(self) weakSelf=self;
-    self.tennis.onClose=^{[weakSelf.tennis removeFromSuperview];weakSelf.tennis=nil;weakSelf.mediaController.gameOverlay=nil;[weakSelf.mediaController setNeedsFocusUpdate];[weakSelf setNeedsFocusUpdate];};
+    self.tennis.onClose=^{[weakSelf closeTennis];};
     [self attachTennis];
+}
+- (void)setGameInputLocked:(BOOL)locked {
+    self.engineHost.userInteractionEnabled=!locked;self.toolbar.userInteractionEnabled=!locked;self.home.userInteractionEnabled=!locked;
+    self.mediaController.playerController.view.userInteractionEnabled=!locked;
+    [self.engine setInputLocked:locked];self.cursor.hidden=locked || !self.cursorMode;
+}
+- (void)closeTennis {
+    [self.tennis removeFromSuperview];self.tennis=nil;self.mediaController.gameOverlay=nil;
+    [self setGameInputLocked:NO];[self.mediaController setNeedsFocusUpdate];[self setNeedsFocusUpdate];[self updateCursor];
 }
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
@@ -368,6 +379,7 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
 - (void)showHistory { [self showEntries:self.library.history title:@"Geçmiş" history:YES]; }
 - (void)showFavorites { [self showEntries:self.library.favorites title:@"Favoriler" history:NO]; }
 - (void)handlePan:(UIPanGestureRecognizer *)gesture {
+    if(self.tennis)return;
     if(!self.home.hidden || self.focusToolbar) return;
     CGPoint delta=[gesture translationInView:self.engine.contentView];
     if(self.cursorMode){[self moveCursorX:delta.x*1.7 y:delta.y*1.7];[gesture setTranslation:CGPointZero inView:self.engine.contentView];return;}
@@ -483,6 +495,7 @@ static UIColor *SeyirSurface(void) { return [UIColor colorWithWhite:0.115 alpha:
     [list addAction:[UIAlertAction actionWithTitle:@"Kapat" style:UIAlertActionStyleCancel handler:nil]];[self presentViewController:list animated:YES completion:nil];
 }
 - (void)pressesBegan:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event {
+    if(self.tennis){[self.tennis pressesBegan:presses withEvent:event];return;}
     for(UIPress *press in presses) {
         if(self.home.hidden && !self.focusToolbar) {
             if(self.cursorMode) {

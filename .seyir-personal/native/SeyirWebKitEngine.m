@@ -123,7 +123,9 @@
 }
 - (void)suspend { [self stop];[self pauseMedia]; }
 - (void)togglePlayback { [self run:@"window.__seyirRemote?.togglePlayback()"]; }
-- (void)enterVideoFullscreen { [self run:@"(()=>{const v=[...document.querySelectorAll('video')].sort((a,b)=>b.clientWidth*b.clientHeight-a.clientWidth*a.clientHeight)[0]; if(v){if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();else if(v.requestFullscreen)v.requestFullscreen().catch(()=>{});}})()"]; }
+- (void)enterVideoFullscreen { [self run:@"window.__seyirRemote?.expandVideo()"]; }
+- (void)exitVideoFullscreen { [self run:@"window.__seyirRemote?.exitVideo()"]; }
+- (void)setInputLocked:(BOOL)locked { [self run:locked ? @"window.__seyirRemote?.setInputLocked(true)" : @"window.__seyirRemote?.setInputLocked(false)"]; }
 - (void)moveFocusX:(NSInteger)x y:(NSInteger)y { [self run:[NSString stringWithFormat:@"window.__seyirRemote?.move(%ld,%ld)",(long)x,(long)y]]; }
 - (void)pointerMoveX:(double)x y:(double)y { [self run:[NSString stringWithFormat:@"window.__seyirRemote?.pointerMove(%f,%f)",x,y]]; }
 - (void)pointerClickX:(double)x y:(double)y { [self run:[NSString stringWithFormat:@"window.__seyirRemote?.pointerClick(%f,%f)",x,y]]; }
@@ -148,6 +150,7 @@
 - (void)receiveMessage:(id)message {
     id body=[message valueForKey:@"body"];
     if(![body isKindOfClass:NSDictionary.class]) return;
+    if([body[@"fullscreen"] isKindOfClass:NSNumber.class]){[self.controller setPageFullscreen:[body[@"fullscreen"] boolValue]];return;}
     NSString *value=[body[@"value"] isKindOfClass:NSString.class] ? body[@"value"] : @"";
     if(value.length>8192) value=[value substringToIndex:8192];
     [self.controller requestTextInput:value secure:[body[@"secure"] boolValue]];
