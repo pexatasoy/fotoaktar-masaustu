@@ -172,6 +172,14 @@ jobs:
           cek "$TEL" tr "-sahne aynasoru:1"                tel_a_soru_d1
           cek "$TEL" tr "-sahne aynasoru:7"                tel_a_soru_d7
           cek "$TEL" tr "-sahne aynaonay"                  tel_a_onay
+          # 🔥 Yan yolun finali ve alev ödülleri
+          cek "$TEL" tr "-gelistirici -perde sandik"       tel_k_kapilar
+          cek "$TEL" tr "-gelistirici -tarz alev"          tel_alev_menu
+          cek "$TEL" tr "-gelistirici -tarz alev -manzara alev" tel_alev_manzara
+          cek "$TEL" tr "-gelistirici -tarz alev -sahne bolum:33" tel_alev_bolum
+          cek "$TEL" tr "-gelistirici -tarz alev -perde dukkan"   tel_alev_dukkan
+          cek "$TEL" tr "-gelistirici -tarz alev -perde profil"   tel_alev_profil
+          cek "$TEL" tr "-gelistiriciKapat -tarz dunya -manzara batim" tel_alev_geri
           # 🚪 Patron kimliği: giriş damgası, başlık, çerçeve, madalyalar
           cek "$TEL" tr "-gelistirici -sahne bolum:29"     tel_patron_d2
           cek "$TEL" tr "-gelistirici -perde sandik"       tel_sandik_kapi
