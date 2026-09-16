@@ -77,7 +77,7 @@ actor CloudSyncService {
         let recordID = recordID(for: userID)
         var candidate = local
         for _ in 0..<3 {
-            let record: CKRecord
+            var record: CKRecord
             do {
                 record = try await container.privateCloudDatabase.record(for: recordID)
                 let hasStoredState = record["stateAsset"] != nil || record["state"] != nil
