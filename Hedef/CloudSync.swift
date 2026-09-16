@@ -24,7 +24,7 @@ enum CloudSyncFailure: LocalizedError {
 
 actor CloudSyncService {
     static let shared = CloudSyncService()
-    private let container = CKContainer.default()
+    private var container: CKContainer { CKContainer.default() }
 
     private func recordID(for userID: String) -> CKRecord.ID {
         let digest = SHA256.hash(data: Data(userID.utf8)).map { String(format: "%02x", $0) }.joined()
