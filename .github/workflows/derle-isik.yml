@@ -172,6 +172,9 @@ jobs:
           cek "$TEL" tr "-sahne aynasoru:1"                tel_a_soru_d1
           cek "$TEL" tr "-sahne aynasoru:7"                tel_a_soru_d7
           cek "$TEL" tr "-sahne aynaonay"                  tel_a_onay
+          # 🚪 Patron kimliği: giriş damgası, başlık, çerçeve, madalyalar
+          cek "$TEL" tr "-gelistirici -sahne bolum:29"     tel_patron_d2
+          cek "$TEL" tr "-gelistirici -perde sandik"       tel_sandik_kapi
           cek "$TEL" tr "-gelistiriciKapat -tarz dunya -manzara batim" tel_tarz_geri2
           cek "$TEL" en "-perde dukkan"     tel_dukkan_en
           cek "$TEL" tr "-perde ayarlar"    tel_ayarlar_tr
