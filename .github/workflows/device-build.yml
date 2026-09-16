@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - .github/workflows/device-build.yml
+      - Hedef/**
   workflow_dispatch:
 permissions:
   contents: read

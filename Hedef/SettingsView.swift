@@ -49,7 +49,7 @@ struct SettingsView: View {
                     CozyCard(color: Palette.peach.opacity(0.45)) {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Gizliliğin önemli 🔒").font(.headline)
-                            Text("Kayıtların cihazında ve iCloud açıksa yalnızca senin özel iCloud alanında saklanır. Kestirmeler yalnızca sen kurarsan çalışır. Otomatik banka bağlantısı yok.")
+                            Text(account.isLocalDemo ? "Bu deneme paketindeki kayıtların yalnızca bu iPhone'da saklanır. Kestirmeler yalnızca sen kurarsan çalışır." : "Kayıtların cihazında ve iCloud açıksa yalnızca senin özel iCloud alanında saklanır. Kestirmeler yalnızca sen kurarsan çalışır. Otomatik banka bağlantısı yok.")
                                 .font(.subheadline)
                         }
                     }
@@ -65,8 +65,8 @@ struct SettingsView: View {
                             case .unavailable: Text("iCloud eşitlemesi kullanılmıyor; kayıtların cihazında kalır.")
                             case .failed(let message): Text("Eşitleme bekliyor: \(message)").foregroundStyle(Palette.coral)
                             }
-                            Button("Şimdi eşitle") { store.syncNow() }
-                            Button("Çıkış yap") { account.signOut() }
+                            if !account.isLocalDemo { Button("Şimdi eşitle") { store.syncNow() } }
+                            Button(account.isLocalDemo ? "Denemeden çık" : "Çıkış yap") { account.signOut() }
                         }
                     }
                     CozyCard(color: Palette.mint.opacity(0.4)) {
@@ -84,7 +84,7 @@ struct SettingsView: View {
                     }
                     Button("Bütün hedef ve hareketlerimi sil", role: .destructive) { showDelete = true }
                         .frame(maxWidth: .infinity).padding(.top)
-                    Button("Hesabımı ve tüm verilerimi sil", role: .destructive) { showAccountDelete = true }
+                    Button(account.isLocalDemo ? "Yerel deneme verilerimi sil" : "Hesabımı ve tüm verilerimi sil", role: .destructive) { showAccountDelete = true }
                         .frame(maxWidth: .infinity)
                     if let actionError { Text(actionError).font(.footnote).foregroundStyle(Palette.coral) }
                 }

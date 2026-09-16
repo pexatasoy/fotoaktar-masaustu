@@ -8,11 +8,21 @@ final class AccountManager: ObservableObject {
     static let shared = AccountManager()
     @Published private(set) var signedIn = false
     @Published private(set) var errorMessage: String?
+    @Published private(set) var isLocalDemo = false
     @Published var showRevocationHelp = false
 
     private let key = "com.hedefapp.hedef.apple-user-id"
+    private let localDemoKey = "com.hedefapp.hedef.local-demo-enabled"
 
     private init() {
+        #if HEDEF_LOCAL_ONLY
+        if UserDefaults.standard.bool(forKey: localDemoKey) {
+            isLocalDemo = true
+            signedIn = true
+            GoalStore.shared.activate(userID: "local-demo")
+            return
+        }
+        #endif
         if let userID = readUserID() {
             ASAuthorizationAppleIDProvider().getCredentialState(forUserID: userID) { [weak self] state, _ in
                 Task { @MainActor in
@@ -26,6 +36,16 @@ final class AccountManager: ObservableObject {
             }
         }
     }
+
+    #if HEDEF_LOCAL_ONLY
+    func continueLocally() {
+        UserDefaults.standard.set(true, forKey: localDemoKey)
+        isLocalDemo = true
+        errorMessage = nil
+        GoalStore.shared.activate(userID: "local-demo")
+        signedIn = true
+    }
+    #endif
 
     func handle(_ result: Result<ASAuthorization, Error>) {
         switch result {
@@ -47,6 +67,10 @@ final class AccountManager: ObservableObject {
     }
 
     func signOut() {
+        #if HEDEF_LOCAL_ONLY
+        UserDefaults.standard.removeObject(forKey: localDemoKey)
+        isLocalDemo = false
+        #endif
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                     kSecAttrAccount as String: key]
         SecItemDelete(query as CFDictionary)
@@ -56,8 +80,14 @@ final class AccountManager: ObservableObject {
 
     func deleteAccount() async throws {
         try await GoalStore.shared.deleteAccountData()
+        let wasLocalDemo = isLocalDemo
         signOut()
-        showRevocationHelp = true
+        showRevocationHelp = !wasLocalDemo
+    }
+
+    func handleCredentialRevocation() {
+        guard !isLocalDemo else { return }
+        signOut()
     }
 
     private func readUserID() -> String? {

@@ -20,7 +20,7 @@ struct HedefApp: App {
                 if phase == .active && account.signedIn { store.syncNow() }
             }
             .onReceive(NotificationCenter.default.publisher(for: ASAuthorizationAppleIDProvider.credentialRevokedNotification)) { _ in
-                account.signOut()
+                account.handleCredentialRevocation()
             }
         }
     }

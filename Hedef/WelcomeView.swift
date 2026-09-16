@@ -29,13 +29,28 @@ struct WelcomeView: View {
                 .signInWithAppleButtonStyle(.black)
                 .frame(height: 56)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
+                #if HEDEF_LOCAL_ONLY
+                Button("Apple ile giriş olmadan dene") { account.continueLocally() }
+                    .font(.headline)
+                    .foregroundStyle(Palette.ink)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 17)
+                    .background(Palette.mint, in: RoundedRectangle(cornerRadius: 16))
+                #endif
                 if let message = account.errorMessage {
                     Text(message).font(.footnote).foregroundStyle(Palette.coral)
                 }
+                #if HEDEF_LOCAL_ONLY
+                Text("Deneme kayıtların yalnızca bu iPhone'da tutulur. iCloud eşitlemesi bu pakette kapalı.")
+                    .font(.footnote)
+                    .foregroundStyle(Palette.ink.opacity(0.58))
+                    .multilineTextAlignment(.center)
+                #else
                 Text("Kayıtların cihazında saklanır. iCloud açıksa kendi özel alanında eşitlenir.")
                     .font(.footnote)
                     .foregroundStyle(Palette.ink.opacity(0.58))
                     .multilineTextAlignment(.center)
+                #endif
             }
             .padding(28)
         }
