@@ -92,6 +92,10 @@ final class GoalStore: ObservableObject {
     }
 
     func syncNow() {
+        #if HEDEF_LOCAL_ONLY
+        syncStatus = .unavailable
+        return
+        #endif
         guard let targetFileURL = fileURL, let activeUserID else { return }
         syncTask?.cancel()
         let snapshot = state
@@ -304,6 +308,12 @@ final class GoalStore: ObservableObject {
 
     func deleteAccountData() async throws {
         guard let activeUserID else { return }
+        #if HEDEF_LOCAL_ONLY
+        clearAll()
+        if let fileURL { try FileManager.default.removeItem(at: fileURL) }
+        stopSync()
+        return
+        #endif
         syncTask?.cancel()
         let remote = try await CloudSyncService.shared.sync(local: state, userID: activeUserID)
         state = await CloudSyncService.shared.merge(local: state, remote: remote)
