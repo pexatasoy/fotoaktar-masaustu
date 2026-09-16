@@ -1,0 +1,95 @@
+name: Hedef iPhone package
+on:
+  push:
+    paths:
+      - .github/workflows/device-build.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: command -v xcodegen || brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Install signing identity and API key
+        env:
+          IMZA_P12: ${{ secrets.IMZA_P12 }}
+          IMZA_P12_PAROLA: ${{ secrets.IMZA_P12_PAROLA }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN="$RUNNER_TEMP/hedef.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          printf '%s' "$IMZA_P12" | base64 --decode > "$RUNNER_TEMP/distribution.p12"
+          security import "$RUNNER_TEMP/distribution.p12" -P "$IMZA_P12_PAROLA" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          mkdir -p "$RUNNER_TEMP/private_keys"
+          printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+      - name: Archive for iPhone
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          TAKIM_ID: ${{ secrets.TAKIM_ID }}
+        run: |
+          set -uo pipefail
+          xcodebuild archive -project Hedef.xcodeproj -scheme Hedef -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Hedef.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$TAKIM_ID" CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" > archive.log 2>&1
+          result=$?
+          grep -E 'error:|warning:|ARCHIVE (SUCCEEDED|FAILED)' archive.log | tail -80 || true
+          exit "$result"
+      - name: Export IPA
+        if: success()
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          TAKIM_ID: ${{ secrets.TAKIM_ID }}
+        run: |
+          set -uo pipefail
+          cat > "$RUNNER_TEMP/export.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>release-testing</string>
+            <key>teamID</key><string>$TAKIM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>destination</key><string>export</string>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Hedef.xcarchive" \
+            -exportPath "$RUNNER_TEMP/hedef-export" -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            > export.log 2>&1
+          result=$?
+          grep -E 'error:|Error|EXPORT (SUCCEEDED|FAILED)' export.log | tail -80 || true
+          exit "$result"
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: Hedef-iPhone-IPA
+          path: ${{ runner.temp }}/hedef-export/*.ipa
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Hedef-signing-logs
+          path: |
+            archive.log
+            export.log
+          retention-days: 7
