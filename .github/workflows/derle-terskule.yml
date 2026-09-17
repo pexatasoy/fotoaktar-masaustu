@@ -84,16 +84,20 @@ jobs:
           xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
           xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
           xcrun simctl install "$UDID" "$UYG" || exit 0
-          xcrun simctl launch "$UDID" com.terskule.prototip || true
+          xcrun simctl launch "$UDID" com.terskule.app || true
           sleep 8
           xcrun simctl io "$UDID" screenshot gorseller/hazirlik.png || true
-          xcrun simctl terminate "$UDID" com.terskule.prototip || true
-          xcrun simctl launch "$UDID" com.terskule.prototip -demo || true
+          xcrun simctl terminate "$UDID" com.terskule.app || true
+          xcrun simctl launch "$UDID" com.terskule.app -demo || true
           sleep 25
           xcrun simctl io "$UDID" screenshot gorseller/dalga_25sn.png || true
           sleep 60
           xcrun simctl io "$UDID" screenshot gorseller/dalga_85sn.png || true
-          xcrun simctl terminate "$UDID" com.terskule.prototip || true
+          xcrun simctl terminate "$UDID" com.terskule.app || true
+          # Açılış çökmesi olursa görüntü ana ekranı gösterir ve sebep görünmez: günlüğü de sakla.
+          xcrun simctl spawn "$UDID" log show --last 6m --predicate 'process == "terskule"' --style compact 2>/dev/null \
+            | grep -iE "fatal|crash|error|exception|terskule" | tail -120 > gorseller/simulator-gunlugu.txt || true
+          ls ~/Library/Logs/DiagnosticReports/ 2>/dev/null | grep -i terskule | head -3 | while read -r r; do cp ~/Library/Logs/DiagnosticReports/"$r" gorseller/ || true; done
           ls -la gorseller/ || true
 
       - name: Ekran görüntülerini sakla
