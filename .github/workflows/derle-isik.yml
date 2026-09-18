@@ -188,8 +188,10 @@ jobs:
             sleep "$1"
             xcrun simctl io "$EU" screenshot "gorseller/$2.png" || true
           }
-          erken 2 tel_alev_acilis_2sn
-          erken 4 tel_alev_acilis_4sn
+          # ⚠️ 2 ve 4 sn DENENDİ, kareler bomboş çıktı: uygulama ~20 sn varlık
+          # yüklüyor, açılış perdesi ancak ondan sonra başlıyor.
+          erken 22 tel_alev_acilis_1
+          erken 25 tel_alev_acilis_2
           cek "$TEL" tr "-gelistirici -tarz alev -manzara alev" tel_alev_manzara
           cek "$TEL" tr "-gelistirici -tarz alev -sahne bolum:33" tel_alev_bolum
           cek "$TEL" tr "-gelistirici -tarz alev -perde dukkan"   tel_alev_dukkan
