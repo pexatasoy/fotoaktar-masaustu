@@ -175,6 +175,21 @@ jobs:
           # 🔥 Yan yolun finali ve alev ödülleri
           cek "$TEL" tr "-gelistirici -perde sandik"       tel_k_kapilar
           cek "$TEL" tr "-gelistirici -tarz alev"          tel_alev_menu
+          # 🔥 AÇILIŞIN ORTASI. ⚠️ `cek` 28 sn bekliyor, açılış o zamana kadar
+          # bitiyor ve hiç görünmüyordu; bu satırlar erken kare alıyor.
+          erken () {   # erken <bekleme> <ad>
+            # ⚠️ `cek` içindeki UDID yerel; burada yeniden bulunuyor.
+            EU=$(xcrun simctl list devices available \
+                 | grep -m1 "$TEL (" | grep -oE "[0-9A-F-]{36}") || true
+            [ -z "$EU" ] && return 0
+            xcrun simctl terminate "$EU" com.littlelightgame.app 2>/dev/null || true
+            xcrun simctl launch "$EU" com.littlelightgame.app \
+              -AppleLanguages "(tr)" -AppleLocale tr -gelistirici -tarz alev -manzara alev || true
+            sleep "$1"
+            xcrun simctl io "$EU" screenshot "gorseller/$2.png" || true
+          }
+          erken 2 tel_alev_acilis_2sn
+          erken 4 tel_alev_acilis_4sn
           cek "$TEL" tr "-gelistirici -tarz alev -manzara alev" tel_alev_manzara
           cek "$TEL" tr "-gelistirici -tarz alev -sahne bolum:33" tel_alev_bolum
           cek "$TEL" tr "-gelistirici -tarz alev -perde dukkan"   tel_alev_dukkan
