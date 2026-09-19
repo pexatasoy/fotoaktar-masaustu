@@ -1,0 +1,160 @@
+name: Aheste Takip — TestFlight
+
+# İmzalı derleme ve App Store Connect'e yükleme (Ters Kule akışının uyarlaması).
+#
+# ⚠️ Kaynak depodan DEĞİL sunucudan geliyor; depoda yalnız bu tarif duruyor.
+# ⚠️ İmza malzemesi gizli değişkenlerde, depoda değil (depo public):
+#      IMZA_P12 + IMZA_P12_PAROLA  → takımın dağıtım sertifikası (öteki uygulamalarla ORTAK)
+#      AHESTE_PROFIL               → bu uygulamanın App Store sağlama profili
+#      ASC_KEY_P8 / ASC_KEY_ID / ASC_ISSUER_ID → App Store Connect API anahtarı
+#      TAKIM_ID                    → geliştirici takımı
+# ⚠️ Yükleme altool'a kullanıcı adı/parola ile DEĞİL API anahtarıyla yapılıyor:
+#    iki adımlı doğrulama sorun çıkarmıyor.
+# ⚠️ "Bu sürümde ne var" notu BURADA verilemiyor: altool yüklerken not
+#    alanı kabul etmiyor, not ancak derleme işlendikten sonra App Store
+#    Connect API'siyle yazılabiliyor → `ci/testflight_kur.py not "..."`.
+#    (Ters Kule'de bu bir `workflow_dispatch` girdisi olarak duruyor ama
+#    akışın hiçbir adımı onu kullanmıyor — buraya kopyalanmadı.)
+on:
+  workflow_dispatch:
+
+jobs:
+  yayinla:
+    runs-on: macos-26
+    steps:
+      - name: Kaynağı çek
+        run: |
+          curl -fsSL --retry 6 --retry-delay 5 --retry-all-errors \
+            --connect-timeout 20 --max-time 300 \
+            -H "Cache-Control: no-cache" -o kaynak.zip \
+            https://chainmedia.co/fotoyol/aheste/aheste-kaynak.zip \
+            || { echo "Kaynak indirilemedi."; exit 1; }
+          unzip -oq kaynak.zip
+          cat DAMGA.txt
+
+      - name: XcodeGen
+        run: brew install xcodegen
+
+      - name: Xcode projesi
+        run: xcodegen generate
+
+      # ⚠️ GEÇİCİ ANAHTAR ZİNCİRİ: koşucunun varsayılan zincirine yazmak
+      # yerine bu koşuya özel bir zincir kuruluyor, koşu bitince yok oluyor.
+      - name: İmza malzemesini kur
+        env:
+          P12: ${{ secrets.IMZA_P12 }}
+          P12_PAROLA: ${{ secrets.IMZA_P12_PAROLA }}
+          PROFIL: ${{ secrets.AHESTE_PROFIL }}
+        run: |
+          ZINCIR=$RUNNER_TEMP/imza.keychain-db
+          ZP=$(openssl rand -base64 24)
+          security create-keychain -p "$ZP" "$ZINCIR"
+          security set-keychain-settings -lut 21600 "$ZINCIR"
+          security unlock-keychain -p "$ZP" "$ZINCIR"
+          echo "$P12" | base64 --decode > $RUNNER_TEMP/dagitim.p12
+          security import $RUNNER_TEMP/dagitim.p12 -P "$P12_PAROLA" -A -t cert -f pkcs12 -k "$ZINCIR"
+          # ⚠️ Bu satır olmazsa codesign her imzada parola soruyor ve koşu
+          # sessizce takılıyor (kimse cevap veremez).
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$ZP" "$ZINCIR" > /dev/null
+          security list-keychain -d user -s "$ZINCIR" login.keychain-db
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$PROFIL" | base64 --decode \
+            > ~/Library/MobileDevice/Provisioning\ Profiles/aheste.mobileprovision
+          echo "kurulu sertifikalar:"
+          security find-identity -v -p codesigning "$ZINCIR"
+
+      - name: Arşivle
+        run: |
+          set -o pipefail
+          # ⚠️ Derleme numarası = koşu numarası. App Store Connect aynı
+          # numarayı ikinci kez KABUL ETMİYOR; elle artırmak unutuluyor.
+          if ! xcodebuild archive \
+            -project AhesteTakip.xcodeproj \
+            -scheme AhesteTakip \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath $RUNNER_TEMP/AhesteTakip.xcarchive \
+            -allowProvisioningUpdates \
+            DEVELOPMENT_TEAM=${{ secrets.TAKIM_ID }} \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="Aheste Takip App Store" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            > arsiv.log 2>&1; then
+              echo "=============== ARŞİV HATALARI ==============="
+              grep -E "error:" arsiv.log | sed "s|$PWD/||" | sort -u | head -60
+              echo "=============================================="
+              exit 1
+          fi
+          echo "✅ arşiv hazır (derleme ${{ github.run_number }})"
+
+      - name: .ipa'ya çıkar
+        run: |
+          cat > $RUNNER_TEMP/disari.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>${{ secrets.TAKIM_ID }}</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>provisioningProfiles</key><dict>
+              <key>com.ahesteciftlik.takip</key><string>Aheste Takip App Store</string>
+            </dict>
+            <key>uploadSymbols</key><true/>
+          </dict></plist>
+          PLIST
+          set -o pipefail
+          if ! xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/AhesteTakip.xcarchive \
+            -exportPath $RUNNER_TEMP/cikti \
+            -exportOptionsPlist $RUNNER_TEMP/disari.plist \
+            > cikar.log 2>&1; then
+              echo "=============== ÇIKARMA HATALARI ==============="
+              grep -E "error:|Error" cikar.log | sort -u | head -40
+              exit 1
+          fi
+          ls -lh $RUNNER_TEMP/cikti/
+
+      - name: İmzalı ipa'yı sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aheste-imzali-ipa-${{ github.run_number }}
+          path: ${{ runner.temp }}/cikti/*.ipa
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: App Store Connect'e yükle
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          # ⚠️ Anahtar dosyasının adı KALIBA UYMAK ZORUNDA:
+          #    ~/private_keys/AuthKey_<KEYID>.p8
+          mkdir -p ~/private_keys
+          echo "$ASC_KEY_P8" > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+          IPA=$(ls $RUNNER_TEMP/cikti/*.ipa | head -1)
+          xcrun altool --upload-app -f "$IPA" -t ios \
+            --apiKey ${{ secrets.ASC_KEY_ID }} \
+            --apiIssuer ${{ secrets.ASC_ISSUER_ID }}
+          echo "✅ yüklendi — App Store Connect'te işlenmesi birkaç dakika sürer"
+
+      # Çökme raporları dSYM olmadan okunamıyor (Işık'ta bir kez saklanmamıştı).
+      - name: Sembolleri (dSYM) sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsym-${{ github.run_number }}
+          path: ${{ runner.temp }}/AhesteTakip.xcarchive/dSYMs/
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Günlükleri sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testflight-gunlugu-${{ github.run_number }}
+          path: |
+            arsiv.log
+            cikar.log
+          retention-days: 7
+          if-no-files-found: ignore
