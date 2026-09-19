@@ -1,0 +1,132 @@
+name: Aheste Takip derle
+
+# İmzasız derleme + simülatörde ekran görüntüsü.
+# ⚠️ Kaynak depodan DEĞİL sunucudan geliyor (yayinla-ios.sh ile yayınlanır);
+#    depoda yalnız bu tarif duruyor.
+on:
+  workflow_dispatch:
+
+jobs:
+  derle:
+    # GitHub'ın macOS 26 koşucusu — Xcode 26 kurulu geliyor.
+    runs-on: macos-26
+
+    steps:
+      - name: Kaynağı çek
+        run: |
+          # Tek denemeye bırakmıyoruz: anlık bir kopma bütün derlemeyi çöpe atıyor.
+          curl -fsSL --retry 6 --retry-delay 5 --retry-all-errors \
+            --connect-timeout 20 --max-time 300 \
+            -H "Cache-Control: no-cache" -o kaynak.zip \
+            https://chainmedia.co/fotoyol/aheste/aheste-kaynak.zip \
+            || { echo "Kaynak indirilemedi — sunucu geçici olarak erişilemiyor olabilir."; exit 1; }
+          unzip -oq kaynak.zip
+          echo "--- bu derlemedeki kaynak ---"
+          cat DAMGA.txt
+
+      - name: Ortamı göster
+        run: |
+          sw_vers
+          xcodebuild -version
+
+      - name: XcodeGen kur
+        run: brew install xcodegen
+
+      - name: Xcode projesini üret
+        run: xcodegen generate
+
+      - name: Derle (imzasız)
+        run: |
+          set -o pipefail
+          # xcodebuild binlerce satır basıyor; hata mesajı içinde kayboluyor.
+          # Günlüğü dosyaya alıp başarısızlıkta SADECE hata satırlarını yazdırıyoruz.
+          if ! xcodebuild \
+            -project AhesteTakip.xcodeproj \
+            -scheme AhesteTakip \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath yapi \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            build > derleme.log 2>&1; then
+              echo ""
+              echo "================== DERLEME HATALARI =================="
+              grep -E "error:" derleme.log | sed "s|$PWD/||" | sort -u | head -60
+              echo "====================================================="
+              exit 1
+          fi
+          echo "✅ derleme başarılı"
+
+      - name: Tam günlüğü sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: derleme-gunlugu
+          path: derleme.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # SwiftUI Linux'ta derlenmiyor; arayüzü GÖRMENİN tek yolu bu.
+      # Ayrı bir simülatör derlemesi şart — mimari farklı (x86/arm sim).
+      - name: Simülatör ekran görüntüsü
+        continue-on-error: true
+        run: |
+          xcodebuild \
+            -project AhesteTakip.xcodeproj -scheme AhesteTakip \
+            -configuration Debug -sdk iphonesimulator \
+            -derivedDataPath sim \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            -quiet build || exit 0
+          UYG=$(find sim/Build/Products -name "AhesteTakip.app" -maxdepth 3 | head -1)
+          echo "uygulama: $UYG"
+          [ -z "$UYG" ] && exit 0
+          mkdir -p gorseller
+          UDID=$(xcrun simctl list devices available | grep -m1 "iPhone 17 Pro (" | grep -oE "[0-9A-F-]{36}") || true
+          [ -z "$UDID" ] && UDID=$(xcrun simctl list devices available | grep -m1 "iPhone" | grep -oE "[0-9A-F-]{36}")
+          [ -z "$UDID" ] && exit 0
+          xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
+          xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
+          # Arayüz Türkçe: simülatörü de Türkçeye alıyoruz, yoksa tarih ve
+          # para biçimleri İngilizce çıkıp ekran görüntüsü yanıltıyor.
+          xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array tr-TR || true
+          xcrun simctl spawn "$UDID" defaults write -g AppleLocale -string tr_TR || true
+          xcrun simctl install "$UDID" "$UYG" || exit 0
+          xcrun simctl launch "$UDID" com.ahesteciftlik.takip || true
+          # Açılış ekranı → oturum yoklaması → giriş ekranı geçişi için zaman.
+          sleep 4
+          xcrun simctl io "$UDID" screenshot gorseller/01-acilis.png || true
+          sleep 8
+          xcrun simctl io "$UDID" screenshot gorseller/02-giris.png || true
+          xcrun simctl terminate "$UDID" com.ahesteciftlik.takip || true
+          # Açılışta çökerse görüntü ana ekranı gösterir ve sebep görünmez:
+          # günlüğü de saklıyoruz (Işık'ta bir kez bu yüzden kör kalınmıştı).
+          xcrun simctl spawn "$UDID" log show --last 5m \
+            --predicate 'process == "AhesteTakip"' --style compact 2>/dev/null \
+            | grep -iE "fatal|crash|error|exception" | tail -80 \
+            > gorseller/simulator-gunlugu.txt || true
+          ls -la gorseller/ || true
+
+      - name: Ekran görüntülerini sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ekran-goruntuleri
+          path: gorseller/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: .ipa dosyasına paketle
+        run: |
+          mkdir -p Payload
+          cp -R yapi/Build/Products/Release-iphoneos/AhesteTakip.app Payload/
+          zip -qry AhesteTakip.ipa Payload
+          ls -lh AhesteTakip.ipa
+
+      - name: İndirilebilir hale getir
+        uses: actions/upload-artifact@v4
+        with:
+          name: aheste-ipa
+          path: AhesteTakip.ipa
+          retention-days: 30
