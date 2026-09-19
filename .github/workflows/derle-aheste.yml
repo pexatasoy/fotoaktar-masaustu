@@ -70,8 +70,14 @@ jobs:
 
       # SwiftUI Linux'ta derlenmiyor; arayüzü GÖRMENİN tek yolu bu.
       # Ayrı bir simülatör derlemesi şart — mimari farklı (x86/arm sim).
-      - name: Simülatör ekran görüntüsü
+      #
+      # ⚠️ Ekranların çoğu giriş ister ve gezinmenin arkasında. DEBUG derlemesi
+      #    `-jeton` ve `-ekran` bayraklarını okuyor (Uygulama/Perde.swift);
+      #    jeton gizli değişkenden gelir, staging sunucusunun oturumudur.
+      - name: Simülatör ekran görüntüleri
         continue-on-error: true
+        env:
+          SS_JETON: ${{ secrets.AHESTE_SS_JETON }}
         run: |
           xcodebuild \
             -project AhesteTakip.xcodeproj -scheme AhesteTakip \
@@ -93,16 +99,30 @@ jobs:
           xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array tr-TR || true
           xcrun simctl spawn "$UDID" defaults write -g AppleLocale -string tr_TR || true
           xcrun simctl install "$UDID" "$UYG" || exit 0
-          xcrun simctl launch "$UDID" com.ahesteciftlik.takip || true
-          # Açılış ekranı → oturum yoklaması → giriş ekranı geçişi için zaman.
-          sleep 4
-          xcrun simctl io "$UDID" screenshot gorseller/01-acilis.png || true
-          sleep 8
-          xcrun simctl io "$UDID" screenshot gorseller/02-giris.png || true
-          xcrun simctl terminate "$UDID" com.ahesteciftlik.takip || true
+
+          cek() {   # cek <dosya-adı> <bekleme> [ek bayraklar...]
+            AD=$1; BEKLE=$2; shift 2
+            xcrun simctl terminate "$UDID" com.ahesteciftlik.takip >/dev/null 2>&1 || true
+            xcrun simctl launch "$UDID" com.ahesteciftlik.takip "$@" >/dev/null 2>&1 || true
+            sleep "$BEKLE"
+            xcrun simctl io "$UDID" screenshot "gorseller/$AD.png" || true
+          }
+
+          # Girişsiz: açılış ve giriş ekranı
+          cek 01-giris 8
+
+          if [ -n "$SS_JETON" ]; then
+            for E in ana kayit at-ekle odeme musteriler yem foto diger album odemeler takip; do
+              cek "$E" 9 -jeton "$SS_JETON" -ekran "$E"
+            done
+          else
+            echo "⚠️ AHESTE_SS_JETON yok — yalnız giriş ekranı çekildi."
+          fi
+
+          xcrun simctl terminate "$UDID" com.ahesteciftlik.takip >/dev/null 2>&1 || true
           # Açılışta çökerse görüntü ana ekranı gösterir ve sebep görünmez:
           # günlüğü de saklıyoruz (Işık'ta bir kez bu yüzden kör kalınmıştı).
-          xcrun simctl spawn "$UDID" log show --last 5m \
+          xcrun simctl spawn "$UDID" log show --last 8m \
             --predicate 'process == "AhesteTakip"' --style compact 2>/dev/null \
             | grep -iE "fatal|crash|error|exception" | tail -80 \
             > gorseller/simulator-gunlugu.txt || true
