@@ -112,7 +112,7 @@ jobs:
           cek 01-giris 8
 
           if [ -n "$SS_JETON" ]; then
-            for E in ana kayit at-ekle odeme musteriler yem foto diger album odemeler takip; do
+            for E in ana kayit at-ekle odeme musteriler yem foto diger album odemeler takip takviye; do
               cek "$E" 9 -jeton "$SS_JETON" -ekran "$E"
             done
           else
