@@ -188,14 +188,55 @@ jobs:
             sleep "$1"
             xcrun simctl io "$EU" screenshot "gorseller/$2.png" || true
           }
-          # ⚠️ 2 ve 4 sn DENENDİ, kareler bomboş çıktı: uygulama ~20 sn varlık
-          # yüklüyor, açılış perdesi ancak ondan sonra başlıyor.
-          erken 22 tel_alev_acilis_1
-          erken 25 tel_alev_acilis_2
+          # ⚠️ 2 ve 4 sn DENENDİ, kareler bomboş çıktı (uygulama varlık
+          # yüklüyordu); 22 ve 25 sn DENENDİ, açılış çoktan bitmişti ve menü
+          # çıktı. Tek kare ile bu pencere bulunamıyor → AÇILIŞ ARTIK FİLME
+          # ALINIYOR, kareler sunucuda ffmpeg ile ayıklanıyor.
+          film () {   # film <saniye> <ad>
+            EU=$(xcrun simctl list devices available \
+                 | grep -m1 "$TEL (" | grep -oE "[0-9A-F-]{36}") || true
+            [ -z "$EU" ] && return 0
+            xcrun simctl terminate "$EU" com.littlelightgame.app 2>/dev/null || true
+            xcrun simctl io "$EU" recordVideo --codec h264 --force "gorseller/$2.mp4" &
+            KAYIT=$!
+            sleep 2
+            xcrun simctl launch "$EU" com.littlelightgame.app \
+              -AppleLanguages "(tr)" -AppleLocale tr -gelistirici -tarz alev -manzara alev || true
+            sleep "$1"
+            # ⚠️ recordVideo dosyayı ancak SIGINT alınca kapatıyor; kill -9
+            # bozuk dosya bırakıyor.
+            kill -INT $KAYIT 2>/dev/null || true
+            wait $KAYIT 2>/dev/null || true
+          }
+          film 34 tel_alev_acilis
+          erken 12 tel_alev_acilis_1
+          erken 16 tel_alev_acilis_2
           cek "$TEL" tr "-gelistirici -tarz alev -manzara alev" tel_alev_manzara
           cek "$TEL" tr "-gelistirici -tarz alev -sahne bolum:33" tel_alev_bolum
           cek "$TEL" tr "-gelistirici -tarz alev -perde dukkan"   tel_alev_dukkan
           cek "$TEL" tr "-gelistirici -tarz alev -perde profil"   tel_alev_profil
+          # 🔥 YAN YOLUN FİNALİ — giriş, kurtarma tahtası, kapanış ve kâğıdın
+          # yandığı son perde. ⚠️ Kapanışın yanması HİÇ görülmedi, o yüzden
+          # perde de filme alınıyor: yanma 2,4. saniyede başlayıp 7,6'da bitiyor,
+          # tek kare denk gelmiyor.
+          cek "$TEL" tr "-gelistirici -sahne kurtarmagiris"    tel_f_giris
+          cek "$TEL" tr "-gelistirici -sahne kurtarmabolum"    tel_f_bolum
+          cek "$TEL" tr "-gelistirici -sahne kurtarmason"      tel_f_kapanis
+          filmSahne () {   # filmSahne <saniye> <bayraklar> <ad>
+            EU=$(xcrun simctl list devices available \
+                 | grep -m1 "$TEL (" | grep -oE "[0-9A-F-]{36}") || true
+            [ -z "$EU" ] && return 0
+            xcrun simctl terminate "$EU" com.littlelightgame.app 2>/dev/null || true
+            xcrun simctl io "$EU" recordVideo --codec h264 --force "gorseller/$3.mp4" &
+            KAYIT=$!
+            sleep 2
+            xcrun simctl launch "$EU" com.littlelightgame.app \
+              -AppleLanguages "(tr)" -AppleLocale tr $2 || true
+            sleep "$1"
+            kill -INT $KAYIT 2>/dev/null || true
+            wait $KAYIT 2>/dev/null || true
+          }
+          filmSahne 34 "-gelistirici -sahne kurtarmakivilcim" tel_f_yanma
           cek "$TEL" tr "-gelistiriciKapat -tarz dunya -manzara batim" tel_alev_geri
           # 🚪 Patron kimliği: giriş damgası, başlık, çerçeve, madalyalar
           cek "$TEL" tr "-gelistirici -sahne bolum:29"     tel_patron_d2
