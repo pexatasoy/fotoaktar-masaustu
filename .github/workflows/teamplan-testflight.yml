@@ -76,9 +76,6 @@ jobs:
             -archivePath $RUNNER_TEMP/TeamPlan.xcarchive \
             -allowProvisioningUpdates \
             DEVELOPMENT_TEAM=${{ secrets.TAKIM_ID }} \
-            CODE_SIGN_STYLE=Manual \
-            PROVISIONING_PROFILE_SPECIFIER="teamplanOS App Store" \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             > arsiv.log 2>&1; then
               echo "=============== ARŞİV HATALARI ==============="
