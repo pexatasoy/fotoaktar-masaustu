@@ -89,11 +89,14 @@ jobs:
           echo "uygulama: $UYG"
           [ -z "$UYG" ] && exit 0
           mkdir -p gorseller
-          UDID=$(xcrun simctl list devices available | grep -m1 "iPhone 17 Pro (" | grep -oE "[0-9A-F-]{36}") || true
+          UDID=$(xcrun simctl list devices available | grep -m1 "iPhone 17 Pro Max (" | grep -oE "[0-9A-F-]{36}") || true
           [ -z "$UDID" ] && UDID=$(xcrun simctl list devices available | grep -m1 "iPhone" | grep -oE "[0-9A-F-]{36}")
           [ -z "$UDID" ] && exit 0
           xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
           xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
+          # Mağaza görseli: 6.9" (Pro Max, 1320×2868) ve Apple'ın alışılmış 9:41 / dolu pil çubuğu.
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 \
+            --cellularMode active --cellularBars 4 --wifiBars 3 --dataNetwork wifi || true
           # Arayüz Türkçe: simülatörü de Türkçeye alıyoruz, yoksa tarih ve
           # para biçimleri İngilizce çıkıp ekran görüntüsü yanıltıyor.
           xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array tr-TR || true
