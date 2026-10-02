@@ -111,12 +111,18 @@ jobs:
             xcrun simctl io "$UDID" screenshot "gorseller/$AD.png" || true
           }
 
-          # Girişsiz: açılış ve giriş ekranı
-          cek 01-giris 8
+          # Girişsiz: ilk açılış (tanışma) ve giriş ekranı; koyu temada tanışma
+          cek 00-tanisma 9
+          cek 01-giris 8 -tp_tanisti YES
+          cek 00-tanisma-koyu 9 -tp_tema koyu
 
           if [ -n "$SS_JETON" ]; then
             for E in $(cat EKRANLAR.txt); do
               cek "$E" 9 -jeton "$SS_JETON" -ekran "$E"
+            done
+            # Gece defteri (koyu tema): launch argümanı AppStorage'ı ezer
+            for E in $(cat EKRANLAR.txt); do
+              cek "koyu-$E" 9 -jeton "$SS_JETON" -ekran "$E" -tp_tema koyu
             done
           else
             echo "⚠️ TP_SS_JETON yok — yalnız giriş ekranı çekildi."
