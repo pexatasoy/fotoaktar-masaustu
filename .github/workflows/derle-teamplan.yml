@@ -121,7 +121,7 @@ jobs:
               cek "$E" 9 -jeton "$SS_JETON" -ekran "$E"
             done
             # Gece defteri (koyu tema): launch argümanı AppStorage'ı ezer
-            for E in $(cat EKRANLAR.txt); do
+            for E in $(cat EKRANLAR-KOYU.txt 2>/dev/null || cat EKRANLAR.txt); do
               cek "koyu-$E" 9 -jeton "$SS_JETON" -ekran "$E" -tp_tema koyu
             done
           else
