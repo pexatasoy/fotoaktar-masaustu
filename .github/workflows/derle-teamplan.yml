@@ -115,6 +115,9 @@ jobs:
           cek 00-tanisma 9
           cek 01-giris 8 -tp_tanisti YES
           cek 00-tanisma-koyu 9 -tp_tema koyu
+          # İngilizce arayüz: -tp_dil launch argümanı UserDefaults'u ezer (Cekirdek/Dil.swift)
+          cek en-00-tanisma 9 -tp_dil en
+          cek en-01-giris 8 -tp_tanisti YES -tp_dil en
 
           if [ -n "$SS_JETON" ]; then
             for E in $(cat EKRANLAR.txt); do
@@ -123,6 +126,9 @@ jobs:
             # Gece defteri (koyu tema): launch argümanı AppStorage'ı ezer
             for E in $(cat EKRANLAR-KOYU.txt 2>/dev/null || cat EKRANLAR.txt); do
               cek "koyu-$E" 9 -jeton "$SS_JETON" -ekran "$E" -tp_tema koyu
+            done
+            for E in $(cat EKRANLAR-EN.txt 2>/dev/null); do
+              cek "en-$E" 9 -jeton "$SS_JETON" -ekran "$E" -tp_dil en
             done
           else
             echo "⚠️ TP_SS_JETON yok — yalnız giriş ekranı çekildi."
