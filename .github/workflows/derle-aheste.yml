@@ -78,6 +78,7 @@ jobs:
         continue-on-error: true
         env:
           SS_JETON: ${{ secrets.AHESTE_SS_JETON }}
+          SS_MUSTERI: ${{ secrets.AHESTE_SS_JETON_MUSTERI }}
         run: |
           xcodebuild \
             -project AhesteTakip.xcodeproj -scheme AhesteTakip \
@@ -112,17 +113,27 @@ jobs:
           cek 01-giris 8
 
           if [ -n "$SS_JETON" ]; then
-            for E in bugun atlar kayit at-ekle odeme musteriler yem foto diger album odemeler takip takviye notlar evrak; do
+            for E in bugun atlar kayit at-ekle odeme musteriler yem foto diger album odemeler takip takviye evrak at-detay at-duzenle musteri-karti musteri-yeni ayarlar ekip hesap; do
               cek "$E" 9 -jeton "$SS_JETON" -ekran "$E"
             done
+            # At detayının öteki sekmeleri (uzun sayfa: sekme başına ayrı kare)
+            for S in kayitlar kimlik sahip fotograf; do
+              cek "at-detay-$S" 10 -jeton "$SS_JETON" -ekran at-detay -sekme "$S"
+            done
+          fi
+          # At sahibi (müşteri) ekranları — ayrı staging oturumu
+          if [ -n "$SS_MUSTERI" ]; then
+            for E in ana at-detay odemeler takip album diger takviye notlar hesap; do
+              cek "m-$E" 9 -jeton "$SS_MUSTERI" -ekran "$E"
+            done
           else
-            echo "⚠️ AHESTE_SS_JETON yok — yalnız giriş ekranı çekildi."
+            echo "⚠️ AHESTE_SS_JETON_MUSTERI yok — müşteri ekranları çekilmedi."
           fi
 
           xcrun simctl terminate "$UDID" com.ahesteciftlik.takip >/dev/null 2>&1 || true
           # Açılışta çökerse görüntü ana ekranı gösterir ve sebep görünmez:
           # günlüğü de saklıyoruz (Işık'ta bir kez bu yüzden kör kalınmıştı).
-          xcrun simctl spawn "$UDID" log show --last 8m \
+          xcrun simctl spawn "$UDID" log show --last 20m \
             --predicate 'process == "AhesteTakip"' --style compact 2>/dev/null \
             | grep -iE "fatal|crash|error|exception" | tail -80 \
             > gorseller/simulator-gunlugu.txt || true
