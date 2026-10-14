@@ -5,7 +5,7 @@ name: Fotoyol iOS — vitrin
 #
 # ⚠️ Kaynak depodan DEĞİL sunucudan geliyor (`./yayinla-ios.sh`); depoda yalnız bu tarif duruyor.
 #    Bu dosya değişirse `ios/ci/kos.sh vitrin gonder` ŞART.
-# ⚠️ Galeriye konan görseller ios/vitrin/fotolar (foto_uret.py üretiyor) — kişi yok, telif yok.
+# ⚠️ Küçük resimler ios/vitrin/fotolar (foto_uret.py üretiyor) — kişi yok, telif yok.
 # Sonra sunucuda: `ios/ci/kos.sh vitrin indir` → `node magaza/vitrin/bas.mjs` → `ios/ci/magaza_kur.py gorsel`.
 on:
   workflow_dispatch:
@@ -64,10 +64,12 @@ jobs:
           xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 \
             --cellularMode active --cellularBars 4 --wifiBars 3 --dataNetwork wifi || true
           xcrun simctl install "$UDID" "$UYG"
-          # İzin penceresi çıkmasın; galeri izni önceden verilir.
-          xcrun simctl privacy "$UDID" grant photos "$PAKET" || true
-          xcrun simctl addmedia "$UDID" vitrin/fotolar/*.jpg || true
-          sleep 3
+          # Aktarım ekranının küçük resimleri: uygulamanın Belgeler/vitrin klasörü (Vitrin.swift).
+          # ⚠️ Galeri (addmedia + PhotoKit) DEĞİL: iOS 26'da `simctl privacy grant photos` izin
+          #    penceresini bastırmadı, pencere sonraki karelerin de üstünde kaldı (2026-10-14).
+          KAP=$(xcrun simctl get_app_container "$UDID" "$PAKET" data)
+          mkdir -p "$KAP/Documents/vitrin" && cp vitrin/fotolar/*.jpg "$KAP/Documents/vitrin/"
+          ls "$KAP/Documents/vitrin" | wc -l
 
           cek() {   # cek <ekran> <bekleme>
             xcrun simctl terminate "$UDID" "$PAKET" >/dev/null 2>&1 || true
