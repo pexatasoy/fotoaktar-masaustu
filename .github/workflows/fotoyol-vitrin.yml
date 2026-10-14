@@ -1,0 +1,100 @@
+name: Fotoyol iOS — vitrin
+
+# Mağaza ekran görüntüleri: DEBUG simülatör derlemesi + `-vitrin <ekran>` kipi (Kaynaklar/Vitrin.swift).
+# 6,9" iPhone (17 Pro Max) → 1320×2868, App Store'un istediği ölçü.
+#
+# ⚠️ Kaynak depodan DEĞİL sunucudan geliyor (`./yayinla-ios.sh`); depoda yalnız bu tarif duruyor.
+#    Bu dosya değişirse `ios/ci/kos.sh vitrin gonder` ŞART.
+# ⚠️ Galeriye konan görseller ios/vitrin/fotolar (foto_uret.py üretiyor) — kişi yok, telif yok.
+# Sonra sunucuda: `ios/ci/kos.sh vitrin indir` → `node magaza/vitrin/bas.mjs` → `ios/ci/magaza_kur.py gorsel`.
+on:
+  workflow_dispatch:
+
+jobs:
+  vitrin:
+    runs-on: macos-26
+    steps:
+      - name: Kaynağı çek
+        run: |
+          curl -fsSL --retry 6 --retry-delay 5 --retry-all-errors \
+            --connect-timeout 20 --max-time 300 \
+            -H "Cache-Control: no-cache" -o ios-kaynak.zip \
+            https://chainmedia.co/fotoyol/ios-kaynak.zip \
+            || { echo "Kaynak indirilemedi."; exit 1; }
+          unzip -oq ios-kaynak.zip
+          cat DAMGA.txt
+          ls vitrin/fotolar | head -3
+
+      - name: XcodeGen
+        run: brew install xcodegen
+
+      - name: Xcode projesi
+        run: xcodegen generate
+
+      - name: Simülatör derlemesi (DEBUG)
+        run: |
+          set -o pipefail
+          if ! xcodebuild \
+            -project fotoyol.xcodeproj -scheme fotoyol \
+            -configuration Debug -sdk iphonesimulator \
+            -derivedDataPath sim \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            build > derleme.log 2>&1; then
+              echo "=============== DERLEME HATALARI ==============="
+              grep -E "error:" derleme.log | sed "s|$PWD/||" | sort -u | head -60
+              exit 1
+          fi
+          echo "✅ simülatör derlemesi hazır"
+
+      - name: Ekran görüntüleri
+        run: |
+          PAKET=com.fotoyol.app.225UD67593
+          UYG=$(find sim/Build/Products -name "fotoyol.app" -maxdepth 3 | head -1)
+          echo "uygulama: $UYG"
+          mkdir -p gorseller
+          UDID=$(xcrun simctl list devices available | grep -m1 "iPhone 17 Pro Max (" | grep -oE "[0-9A-F-]{36}") || true
+          [ -z "$UDID" ] && { echo "⚠️ 17 Pro Max yok:"; xcrun simctl list devices available | grep iPhone; exit 1; }
+          # Dil önce, açılıştan ÖNCE: tarih/sayı biçimi Türkçe çıksın (12.486, "61,4 GB").
+          xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array tr-TR 2>/dev/null || true
+          xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
+          xcrun simctl bootstatus "$UDID" -b >/dev/null 2>&1 || true
+          xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array tr-TR || true
+          xcrun simctl spawn "$UDID" defaults write -g AppleLocale -string tr_TR || true
+          # Mağaza görseli: Apple'ın alışılmış 9:41 ve dolu pil çubuğu.
+          xcrun simctl status_bar "$UDID" override --time "9:41" --batteryState charged --batteryLevel 100 \
+            --cellularMode active --cellularBars 4 --wifiBars 3 --dataNetwork wifi || true
+          xcrun simctl install "$UDID" "$UYG"
+          # İzin penceresi çıkmasın; galeri izni önceden verilir.
+          xcrun simctl privacy "$UDID" grant photos "$PAKET" || true
+          xcrun simctl addmedia "$UDID" vitrin/fotolar/*.jpg || true
+          sleep 3
+
+          cek() {   # cek <ekran> <bekleme>
+            xcrun simctl terminate "$UDID" "$PAKET" >/dev/null 2>&1 || true
+            xcrun simctl launch "$UDID" "$PAKET" -vitrin "$1" >/dev/null 2>&1 || true
+            sleep "$2"
+            xcrun simctl io "$UDID" screenshot "gorseller/$1.png"
+            echo "✓ $1"
+          }
+          cek kaynak 7
+          cek ana 7
+          cek hedef 7
+          cek aktarim 12      # küçük resimler saniyede bir geliyor, kalan süre iki ölçüm istiyor
+          cek bitti 10        # başlıktaki sayaç animasyonu bitsin
+          cek yer 8
+          xcrun simctl terminate "$UDID" "$PAKET" >/dev/null 2>&1 || true
+          xcrun simctl spawn "$UDID" log show --last 6m \
+            --predicate 'process == "fotoyol"' --style compact 2>/dev/null \
+            | grep -iE "fatal|crash|error|exception" | tail -80 > gorseller/simulator-gunlugu.txt || true
+          ls -l gorseller
+
+      - name: Görselleri sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fotoyol-vitrin
+          path: |
+            gorseller/
+            derleme.log
+          retention-days: 7
+          if-no-files-found: ignore
