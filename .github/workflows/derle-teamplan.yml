@@ -102,6 +102,10 @@ jobs:
           xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array tr-TR || true
           xcrun simctl spawn "$UDID" defaults write -g AppleLocale -string tr_TR || true
           xcrun simctl install "$UDID" "$UYG" || exit 0
+          # Cam ikon (Ikon/AppIcon.icon) doğru derlendi mi: paketteki ikon PNG'leri + Assets.car içeriği + ana ekran görüntüsü
+          cp "$UYG"/AppIcon*.png gorseller/ 2>/dev/null || true
+          xcrun assetutil --info "$UYG/Assets.car" > gorseller/ikon-bilgi.json 2>/dev/null || true
+          xcrun simctl io "$UDID" screenshot gorseller/sb-ana-ekran.png || true
 
           cek() {   # cek <dosya-adı> <bekleme> [ek bayraklar...]
             AD=$1; BEKLE=$2; shift 2
