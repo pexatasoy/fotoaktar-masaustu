@@ -70,6 +70,7 @@ jobs:
         continue-on-error: true
         env:
           SS_JETON: ${{ secrets.CT_SS_JETON }}
+          SS_JETON_DESK: ${{ secrets.CT_SS_JETON_DESK }}
         run: |
           xcodebuild \
             -project CTCep.xcodeproj -scheme CTCep \
@@ -104,6 +105,10 @@ jobs:
           cek 00-giris 8
           if [ -n "$SS_JETON" ]; then
             for E in $(cat EKRANLAR.txt); do cek "$E" 10 -jeton "$SS_JETON" -ekran "$E"; done
+            # DESK ekranları DESK hesabının oturumuyla (Pas Demo · gizem)
+            if [ -n "$SS_JETON_DESK" ]; then
+              for E in $(cat EKRANLAR-DESK.txt 2>/dev/null); do cek "$E" 10 -jeton "$SS_JETON_DESK" -ekran "$E"; done
+            fi
             xcrun simctl ui "$UDID" appearance dark || true
             cek koyu-00-giris 8
             for E in $(cat EKRANLAR.txt); do cek "koyu-$E" 10 -jeton "$SS_JETON" -ekran "$E"; done
