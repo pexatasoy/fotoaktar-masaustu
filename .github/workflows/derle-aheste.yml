@@ -5,6 +5,11 @@ name: Aheste Takip derle
 #    depoda yalnız bu tarif duruyor.
 on:
   workflow_dispatch:
+    inputs:
+      vitrin:
+        description: "App Store görselleri (6,9\" iPhone 17 Pro Max, demo-ciftlik oturumları)"
+        type: boolean
+        default: false
 
 jobs:
   derle:
@@ -79,6 +84,9 @@ jobs:
         env:
           SS_JETON: ${{ secrets.AHESTE_SS_JETON }}
           SS_MUSTERI: ${{ secrets.AHESTE_SS_JETON_MUSTERI }}
+          VITRIN: ${{ inputs.vitrin }}
+          VT_YONETICI: ${{ secrets.AHESTE_VITRIN_YONETICI }}
+          VT_MUSTERI: ${{ secrets.AHESTE_VITRIN_MUSTERI }}
         run: |
           xcodebuild \
             -project AhesteTakip.xcodeproj -scheme AhesteTakip \
@@ -90,7 +98,9 @@ jobs:
           echo "uygulama: $UYG"
           [ -z "$UYG" ] && exit 0
           mkdir -p gorseller
-          UDID=$(xcrun simctl list devices available | grep -m1 "iPhone 17 Pro (" | grep -oE "[0-9A-F-]{36}") || true
+          CIHAZ="iPhone 17 Pro ("
+          [ "$VITRIN" = "true" ] && CIHAZ="iPhone 17 Pro Max ("
+          UDID=$(xcrun simctl list devices available | grep -m1 "$CIHAZ" | grep -oE "[0-9A-F-]{36}") || true
           [ -z "$UDID" ] && UDID=$(xcrun simctl list devices available | grep -m1 "iPhone" | grep -oE "[0-9A-F-]{36}")
           [ -z "$UDID" ] && exit 0
           xcrun simctl boot "$UDID" >/dev/null 2>&1 || true
@@ -109,8 +119,22 @@ jobs:
             xcrun simctl io "$UDID" screenshot "gorseller/$AD.png" || true
           }
 
+          # Mağaza görselleri: 6,9" ekran, temiz durum çubuğu (9:41, tam pil), demo-ciftlik verisi.
+          if [ "$VITRIN" = "true" ]; then
+            xcrun simctl status_bar "$UDID" override --time "9:41" --dataNetwork wifi --wifiMode active --wifiBars 3 \
+              --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100 || true
+            cek v-giris 8
+            for S in bugun atlar odemeler; do cek "v-$S" 12 -jeton "$VT_YONETICI" -ekran sekmeler -sekme "$S"; done
+            cek v-at-detay 12 -jeton "$VT_YONETICI" -ekran at-detay
+            cek v-at-kayitlar 12 -jeton "$VT_YONETICI" -ekran at-detay -sekme kayitlar
+            cek v-kayit 10 -jeton "$VT_YONETICI" -ekran kayit
+            for S in atlar takip odemeler; do cek "v-m-$S" 12 -jeton "$VT_MUSTERI" -ekran sekmeler -sekme "$S"; done
+            cek v-m-at-detay 12 -jeton "$VT_MUSTERI" -ekran at-detay
+            SS_JETON=""; SS_MUSTERI=""; ATLA=1
+          fi
+
           # Girişsiz: açılış ve giriş ekranı
-          cek 01-giris 8
+          [ -z "$ATLA" ] && cek 01-giris 8
 
           if [ -n "$SS_JETON" ]; then
             for E in bugun atlar kayit at-ekle odeme musteriler yem foto diger album odemeler takip takviye evrak at-detay at-duzenle musteri-karti musteri-yeni ayarlar ekip hesap; do
@@ -122,7 +146,9 @@ jobs:
             done
           fi
           # At sahibi (müşteri) ekranları — ayrı staging oturumu
-          if [ -n "$SS_MUSTERI" ]; then
+          if [ -n "$ATLA" ]; then
+            :
+          elif [ -n "$SS_MUSTERI" ]; then
             for E in ana at-detay odemeler takip album diger takviye notlar hesap; do
               cek "m-$E" 9 -jeton "$SS_MUSTERI" -ekran "$E"
             done
