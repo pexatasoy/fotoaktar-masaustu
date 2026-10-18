@@ -106,7 +106,7 @@ jobs:
 
           cek 00-karsilama 8 -ekran karsilama
           cek 01-bos-bugun 6 -ekran bugun
-          for E in bugun ilaclar ekle rapor; do cek "ornek-$E" 8 -ornek -ekran "$E"; done
+          for E in bugun ilaclar ekle rapor aile; do cek "ornek-$E" 8 -ornek -ekran "$E"; done
           # Faz 2: tarayıcı (simülatörde kamera yok → elle giriş ekranı) ve okunmuş kutuyla dolan form.
           cek ornek-karekod-tarayici 8 -ornek -ekran karekod
           cek ornek-seyahat 8 -ornek -ekran seyahat
