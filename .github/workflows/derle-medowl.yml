@@ -58,6 +58,23 @@ jobs:
           fi
           echo "✅ derleme başarılı"
 
+      # Çeviri anahtarlarını derleyici çıkarır (Text("…"), String(localized:) …) → sunucuda İngilizceye çevrilir.
+      - name: Çeviri dışa aktar
+        continue-on-error: true
+        run: |
+          xcodebuild -exportLocalizations -project Medowl.xcodeproj -localizationPath ceviri \
+            -exportLanguage en > ceviri.log 2>&1 || tail -20 ceviri.log
+          find ceviri -name "*.xliff" | head
+
+      - name: Çeviriyi sakla
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ceviri
+          path: ceviri/
+          retention-days: 7
+          if-no-files-found: ignore
+
       - name: Tam günlüğü sakla
         if: always()
         uses: actions/upload-artifact@v4
@@ -112,6 +129,10 @@ jobs:
           cek ornek-seyahat 8 -ornek -ekran seyahat
           cek ornek-ayarlar 8 -ornek -ekran ayarlar
           cek ornek-karekod-ekle 10 -ornek -ekran ekle -karekod "(01)08699546130238(21)ORNEKKUTU42(17)281130(10)P2401"
+          # Koyu görünüm
+          xcrun simctl ui "$UDID" appearance dark || true
+          for E in bugun rapor aile; do cek "koyu-$E" 8 -ornek -ekran "$E"; done
+          xcrun simctl ui "$UDID" appearance light || true
 
           xcrun simctl terminate "$UDID" com.medowl.app >/dev/null 2>&1 || true
           xcrun simctl spawn "$UDID" log show --last 10m \
