@@ -95,7 +95,7 @@ jobs:
             <key>teamID</key><string>${{ secrets.TAKIM_ID }}</string>
             <key>signingStyle</key><string>manual</string>
             <key>provisioningProfiles</key><dict>
-              <key>com.teamplanos.app</key><string>teamplanOS App Store</string>
+              <key>com.teamplanos.app</key><string>teamplanOS App Store 2</string>
             </dict>
             <key>uploadSymbols</key><true/>
           </dict></plist>
